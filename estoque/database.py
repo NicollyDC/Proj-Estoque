@@ -1,0 +1,72 @@
+import sqlite3
+
+con = sqlite3.connect("estoque.db")
+con.row_factory = sqlite3.Row
+con.execute("PRAGMA foreign_keys = ON")
+
+con.executescript("""
+CREATE TABLE IF NOT EXISTS produtos(
+    id INTEGER PRIMARY KEY,
+    codigo TEXT UNIQUE NOT NULL,
+    nome TEXT NOT NULL,
+    unidade TEXT,
+    minimo REAL DEFAULT 0,
+    finalidade TEXT DEFAULT 'uso e consumo',
+    ativo INTEGER DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS notas(
+    id INTEGER PRIMARY KEY,
+    numero TEXT NOT NULL,
+    fornecedor TEXT,
+    data TEXT,
+    faturada INTEGER DEFAULT 0,
+    data_faturamento TEXT,
+    chave TEXT
+);
+
+CREATE TABLE IF NOT EXISTS itens(
+    id INTEGER PRIMARY KEY,
+    nota_id INTEGER REFERENCES notas(id) ON DELETE CASCADE,
+    cod_forn TEXT,
+    descricao TEXT,
+    qtd REAL,
+    unidade TEXT,
+    produto_id INTEGER REFERENCES produtos(id),
+    fator REAL DEFAULT 1,
+    qtd_estoque REAL,
+    valor_total REAL
+);
+
+CREATE TABLE IF NOT EXISTS vinculos(
+    fornecedor TEXT,
+    cod_forn TEXT,
+    produto_id INTEGER REFERENCES produtos(id) ON DELETE CASCADE,
+    fator REAL,
+    PRIMARY KEY(fornecedor, cod_forn)
+);
+
+CREATE TABLE IF NOT EXISTS saidas(
+    id INTEGER PRIMARY KEY,
+    produto_id INTEGER REFERENCES produtos(id),
+    qtd REAL,
+    responsavel TEXT,
+    data_hora TEXT,
+    tipo TEXT
+);
+""")
+
+try:
+    con.execute("ALTER TABLE notas ADD COLUMN chave TEXT")
+except sqlite3.OperationalError:
+    pass
+
+
+def q(sql, parametros=()):
+    return con.execute(sql, parametros).fetchall()
+
+
+def run(sql, parametros=()):
+    cur = con.execute(sql, parametros)
+    con.commit()
+    return cur
