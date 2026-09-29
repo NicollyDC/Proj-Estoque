@@ -11,7 +11,7 @@ PROD_F = [
     ("nome", "Nome", "entry", None),
     ("unidade", "Unidade de medida", "entry", None),
     ("minimo", "Estoque mínimo", "entry", None),
-    ("finalidade", "Finalidade", "combo", FIN),
+    ("finalidade", "Finalidade", "combo_ro", FIN),
     ("ativo", "Ativo", "check", None),
 ]
 
@@ -88,6 +88,8 @@ def prod_edit(root, new=False):
             valores,
         )
 
+        
+
     prod_refresh()
 
 
@@ -100,11 +102,53 @@ def prod_del():
 
     from tkinter import messagebox
 
+    # Procura uma nota que utiliza este produto
+    nota = q("""
+        SELECT n.numero, n.fornecedor
+        FROM itens i
+        JOIN notas n ON n.id = i.nota_id
+        WHERE i.produto_id = ?
+        LIMIT 1
+    """, (pid,))
+
+    # Procura uma saída que utiliza este produto
+    saida = q("""
+        SELECT data_hora
+        FROM saidas
+        WHERE produto_id = ?
+        LIMIT 1
+    """, (pid,))
+
+    # Se houver movimentações, apenas inativa
+    if nota or saida:
+
+        if nota:
+            msg = (
+                f"Este produto está vinculado à NF nº {nota[0]['numero']}\n"
+                f"Fornecedor: {nota[0]['fornecedor']}\n\n"
+                "Ele não pode ser excluído para preservar o histórico.\n"
+                "Deseja apenas inativá-lo?"
+            )
+        else:
+            msg = (
+                f"Este produto possui uma saída registrada em "
+                f"{saida[0]['data_hora']}.\n\n"
+                "Ele não pode ser excluído.\n"
+                "Deseja apenas inativá-lo?"
+            )
+
+        if messagebox.askyesno("Produto em uso", msg):
+            run("UPDATE produtos SET ativo = 0 WHERE id = ?", (pid,))
+            prod_refresh()
+
+        return
+
+    # Produto sem movimentações: pode excluir
     if messagebox.askyesno(
-        "Excluir",
-        "Excluir este produto?\n\nSe houver movimentações, prefira apenas inativá-lo.",
+        "Excluir produto",
+        "Deseja excluir este produto permanentemente?"
     ):
-        run("DELETE FROM produtos WHERE id=?", (pid,))
+        run("DELETE FROM produtos WHERE id = ?", (pid,))
         prod_refresh()
 
 
@@ -137,6 +181,7 @@ def criar_aba_produtos(notebook, root):
             ("Novo produto", lambda: prod_edit(root, True)),
             ("Editar produto", lambda: prod_edit(root)),
             ("Excluir produto", prod_del),
+             ("↻ Atualizar", prod_refresh),
         ],
     )
 

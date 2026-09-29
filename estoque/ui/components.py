@@ -1,7 +1,8 @@
 import tkinter as tk
 import sqlite3
 from tkinter import ttk, messagebox
-
+import functools
+import traceback
 
 def form(parent, title, fields, values=None):
     """
@@ -33,13 +34,14 @@ def form(parent, title, fields, values=None):
             var = tk.IntVar(value=int(valor or 0))
             widget = ttk.Checkbutton(win, variable=var)
 
-        elif kind == "combo":
+        elif kind in ("combo", "combo_ro"):
             var = tk.StringVar(value=valor or "")
             widget = ttk.Combobox(
                 win,
                 textvariable=var,
                 values=options,
-                width=38
+                width=38,
+                state="readonly" if kind == "combo_ro" else "normal"
             )
 
         else:
@@ -128,25 +130,19 @@ def sel(treeview):
 
 
 def safe(func):
-    """
-    Decorador para tratar erros comuns do SQLite e valores inválidos.
-    """
+    @functools.wraps(func)
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
 
-        except ValueError:
-            messagebox.showerror(
-                "Erro",
-                "Valor numérico inválido."
-            )
+        except ValueError as e:
+            messagebox.showerror("Erro", str(e))
 
         except sqlite3.IntegrityError as e:
-            messagebox.showerror(
-                "Erro",
-                "Não foi possível salvar/excluir.\n\n"
-                "O código pode estar duplicado ou o registro está em uso.\n\n"
-                f"{e}"
-            )
+            messagebox.showerror("Banco de Dados", str(e))
+
+        except Exception as e:
+            traceback.print_exc()
+            messagebox.showerror("Erro inesperado", str(e))
 
     return wrapper

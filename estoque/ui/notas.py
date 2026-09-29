@@ -174,6 +174,7 @@ def nota_importar_xml():
         messagebox.showerror("Erro", f"Não consegui ler o XML:\n{ex}")
         return
 
+    # Evita importar a mesma NF duas vezes
     if nota["chave"] and q(
         "SELECT 1 FROM notas WHERE chave=?",
         (nota["chave"],)
@@ -184,6 +185,7 @@ def nota_importar_xml():
         )
         return
 
+    # Cabeçalho da nota
     cur = run("""
         INSERT INTO notas(numero, fornecedor, data, chave)
         VALUES (?, ?, ?, ?)
@@ -197,10 +199,12 @@ def nota_importar_xml():
     nid = cur.lastrowid
     ok = 0
 
+    # Itens da nota
     for cod, desc, qtd, un, val in itens:
 
         vinc = q("""
-            SELECT * FROM vinculos
+            SELECT *
+            FROM vinculos
             WHERE fornecedor=? AND cod_forn=?
         """, (nota["fornecedor"], cod))
 
@@ -212,6 +216,15 @@ def nota_importar_xml():
             pid = None
             fator = 1
 
+        # Conversão para unidade de estoque
+        qtd_estoque = qtd * fator
+
+        # Valor unitário automático
+        valor_unit = (
+            round(val / qtd_estoque, 4)
+            if qtd_estoque > 0 else 0
+        )
+
         run("""
             INSERT INTO itens(
                 nota_id,
@@ -222,9 +235,10 @@ def nota_importar_xml():
                 produto_id,
                 fator,
                 qtd_estoque,
-                valor_total
+                valor_total,
+                valor_unit
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             nid,
             cod,
@@ -233,8 +247,9 @@ def nota_importar_xml():
             un,
             pid,
             fator,
-            qtd * fator,
+            qtd_estoque,
             val,
+            valor_unit,
         ))
 
     nota_refresh()
@@ -246,8 +261,13 @@ def nota_importar_xml():
         f"{len(itens)-ok} precisam de vínculo."
     )
 
-    nota_win(root_ref, nid)
+    def _refresh():
+        try:
+            nota_refresh()
+        except tk.TclError:
+            pass
 
+    nota_win(root_ref, nid, on_close=_refresh)
 
 # ---------------- ABA ---------------- #
 

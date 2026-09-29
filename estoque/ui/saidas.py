@@ -1,139 +1,102 @@
+import tkinter as tk
 from tkinter import ttk, messagebox
 
 from estoque.database import q, run
-from estoque.utils import now, fmt, num, TIPOS, ESTOQUE_SQL
-from estoque.ui.components import tree, buttons, form, sel, safe
+from estoque.utils import fmt, now
+from estoque.ui.components import tree, buttons, sel, safe
+from estoque.ui.saida_detalhes import saida_win
 
 st = None
 root_ref = None
 
 
-def prod_map():
-    return {
-        f"{r['codigo']} - {r['nome']}": r["id"]
-        for r in q("SELECT * FROM produtos ORDER BY nome")
-    }
-
+# ---------------- REFRESH ---------------- #
 
 def sai_refresh():
-    global st
+    """Atualiza a lista de saídas."""
 
     st.delete(*st.get_children())
 
-    for r in q("""
+    for s in q("""
         SELECT s.*,
-               p.codigo || ' - ' || p.nome AS prod
+               COUNT(i.id) AS itens,
+               COALESCE(SUM(i.subtotal), 0) AS total
         FROM saidas s
-        JOIN produtos p ON p.id = s.produto_id
-        ORDER BY data_hora DESC, s.id DESC
+        LEFT JOIN itens_saida i
+            ON i.saida_id = s.id
+        GROUP BY s.id
+        ORDER BY s.data_hora DESC, s.id DESC
     """):
 
         st.insert(
             "",
             "end",
-            iid=str(r["id"]),
+            iid=str(s["id"]),
             values=(
-                r["data_hora"],
-                r["prod"],
-                fmt(r["qtd"]),
-                r["responsavel"],
-                r["tipo"],
+                s["data_hora"],
+                s["responsavel"] or "-",
+                s["tipo"],
+                s["itens"],
+                f"R$ {s['total']:.2f}",
             ),
         )
 
 
+# ---------------- CRUD ---------------- #
+
 @safe
-def sai_edit(new=False):
-    sid = None if new else sel(st)
+def nova_saida():
+    """Cria o cabeçalho da saída e abre os detalhes."""
 
-    if not new and not sid:
-        return
-
-    mapa = prod_map()
-    reverso = {v: k for k, v in mapa.items()}
-
-    valores = {
-        "data_hora": now(),
-        "tipo": "uso e consumo",
-    }
-
-    if sid:
-        atual = dict(q("SELECT * FROM saidas WHERE id=?", (sid,))[0])
-        atual["produto"] = reverso.get(atual["produto_id"], "")
-        valores = atual
-
-    campos = [
-        ("produto", "Produto", "combo", list(mapa)),
-        ("qtd", "Quantidade", "entry", None),
-        ("responsavel", "Quem fez a saída", "entry", None),
-        ("data_hora", "Data e hora", "entry", None),
-        ("tipo", "Tipo", "combo", TIPOS),
-    ]
-
-    r = form(root_ref, "Saída", campos, valores)
-
-    if not r:
-        return
-
-    pid = mapa.get(r["produto"])
-
-    if not pid:
-        messagebox.showerror("Erro", "Escolha um produto da lista.")
-        return
-
-    dados = (
-        pid,
-        num(r["qtd"], 0.0),
-        r["responsavel"].strip(),
-        r["data_hora"].strip(),
-        r["tipo"],
-    )
-
-    if sid:
-        run("""
-            UPDATE saidas
-            SET produto_id=?,
-                qtd=?,
-                responsavel=?,
-                data_hora=?,
-                tipo=?
-            WHERE id=?
-        """, dados + (sid,))
-    else:
-        run("""
-            INSERT INTO saidas
-            (produto_id, qtd, responsavel, data_hora, tipo)
-            VALUES (?, ?, ?, ?, ?)
-        """, dados)
+    cur = run("""
+        INSERT INTO saidas(
+            responsavel,
+            tipo,
+            data_hora
+        )
+        VALUES (?, ?, ?)
+    """, (
+        "",
+        "uso e consumo",
+        now(),
+    ))
 
     sai_refresh()
-
-    p = q(ESTOQUE_SQL + " WHERE p.id=?", (pid,))[0]
-
-    if p["estoque"] < 0:
-        messagebox.showwarning(
-            "Estoque negativo",
-            f"{p['nome']} ficou com estoque negativo ({p['estoque']:g})."
-        )
-
-    elif p["estoque"] <= (p["minimo"] or 0):
-        messagebox.showwarning(
-            "Estoque mínimo",
-            f"{p['nome']} atingiu o estoque mínimo ({p['estoque']:g})."
-        )
+    saida_win(root_ref, cur.lastrowid)
+    sai_refresh()
 
 
 @safe
-def sai_del():
+def editar_saida():
     sid = sel(st)
 
-    if sid and messagebox.askyesno(
+    if not sid:
+        messagebox.showwarning(
+            "Atenção",
+            "Selecione uma saída."
+        )
+        return
+
+    saida_win(root_ref, int(sid))
+    sai_refresh()
+
+
+@safe
+def excluir_saida():
+    sid = sel(st)
+
+    if not sid:
+        return
+
+    if messagebox.askyesno(
         "Excluir",
-        "Excluir esta saída?"
+        "Excluir esta saída e todos os seus itens?"
     ):
         run("DELETE FROM saidas WHERE id=?", (sid,))
         sai_refresh()
 
+
+# ---------------- ABA ---------------- #
 
 def criar_aba_saidas(notebook, root):
     global st, root_ref
@@ -146,24 +109,25 @@ def criar_aba_saidas(notebook, root):
     st = tree(
         aba,
         [
-            ("data", "Data/hora", 140),
-            ("prod", "Produto", 260),
-            ("qtd", "Qtd", 70),
-            ("resp", "Responsável", 170),
+            ("data", "Data/Hora", 150),
+            ("resp", "Responsável", 180),
             ("tipo", "Tipo", 120),
+            ("itens", "Itens", 70),
+            ("total", "Valor Total", 120),
         ],
     )
 
     buttons(
         aba,
         [
-            ("Nova saída", lambda: sai_edit(True)),
-            ("Editar saída", lambda: sai_edit(False)),
-            ("Excluir saída", sai_del),
+            ("Nova saída", nova_saida),
+            ("Abrir saída", editar_saida),
+            ("Excluir saída", excluir_saida),
+            ("Atualizar", sai_refresh),
         ],
     )
 
-    st.bind("<Double-1>", lambda e: sai_edit(False))
+    st.bind("<Double-1>", lambda e: editar_saida())
 
     sai_refresh()
 

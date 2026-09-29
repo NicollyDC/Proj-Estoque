@@ -24,7 +24,7 @@ def prod_map():
     }
 
 
-def nota_win(root, nid):
+def nota_win(root, nid, on_close=None):
     w = tk.Toplevel(root)
     w.title("Nota")
     w.geometry("980x420")
@@ -328,5 +328,11 @@ def nota_win(root, nid):
     )
 
     t.bind("<Double-1>", editar_item)
+
+    if on_close:
+        w.bind(
+        "<Destroy>",
+        lambda e: on_close() if e.widget is w else None
+    )
 
     refresh()

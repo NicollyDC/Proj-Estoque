@@ -1,6 +1,9 @@
 import sqlite3
+from pathlib import Path
 
-con = sqlite3.connect("estoque.db")
+DB = Path(__file__).resolve().parent.parent / "estoque.db"
+
+con = sqlite3.connect(DB)
 con.row_factory = sqlite3.Row
 con.execute("PRAGMA foreign_keys = ON")
 
@@ -35,7 +38,8 @@ CREATE TABLE IF NOT EXISTS itens(
     produto_id INTEGER REFERENCES produtos(id),
     fator REAL DEFAULT 1,
     qtd_estoque REAL,
-    valor_total REAL
+    valor_total REAL,
+    valor_unit REAL
 );
 
 CREATE TABLE IF NOT EXISTS vinculos(
@@ -46,21 +50,53 @@ CREATE TABLE IF NOT EXISTS vinculos(
     PRIMARY KEY(fornecedor, cod_forn)
 );
 
+-- Cabeçalho da saída
 CREATE TABLE IF NOT EXISTS saidas(
     id INTEGER PRIMARY KEY,
+    responsavel TEXT,
+    tipo TEXT,
+    data_hora TEXT
+);
+
+-- Itens da saída
+CREATE TABLE IF NOT EXISTS itens_saida(
+    id INTEGER PRIMARY KEY,
+    saida_id INTEGER REFERENCES saidas(id) ON DELETE CASCADE,
     produto_id INTEGER REFERENCES produtos(id),
     qtd REAL,
-    responsavel TEXT,
-    data_hora TEXT,
-    tipo TEXT
+    valor_unit REAL,
+    subtotal REAL
 );
 """)
+
+# ---------------- MIGRAÇÕES ---------------- #
 
 try:
     con.execute("ALTER TABLE notas ADD COLUMN chave TEXT")
 except sqlite3.OperationalError:
     pass
 
+try:
+    con.execute("ALTER TABLE itens ADD COLUMN valor_unit REAL")
+except sqlite3.OperationalError:
+    pass
+
+# Caso alguém tenha um banco antigo sem itens_saida
+try:
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS itens_saida(
+            id INTEGER PRIMARY KEY,
+            saida_id INTEGER REFERENCES saidas(id) ON DELETE CASCADE,
+            produto_id INTEGER REFERENCES produtos(id),
+            qtd REAL,
+            valor_unit REAL,
+            subtotal REAL
+        )
+    """)
+except sqlite3.OperationalError:
+    pass
+
+# ---------------- FUNÇÕES ---------------- #
 
 def q(sql, parametros=()):
     return con.execute(sql, parametros).fetchall()

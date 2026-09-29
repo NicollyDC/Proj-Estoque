@@ -16,21 +16,53 @@ Sistema de controle de estoque para desktop, feito em Python. Os itens entram no
 
 ## Estrutura do projeto
 
-```
-estoque/
-├── main.py            # ponto de entrada da aplicação
-├── app_state.py       # estado da aplicação
-├── database.py        # acesso ao banco de dados
-├── utils.py           # funções auxiliares
-├── xml_import.py      # leitura e importação do XML da nota fiscal
-└── ui/
-    ├── components.py      # componentes reutilizáveis da interface
-    ├── notas.py           # tela de notas
-    ├── notas_detalhes.py  # detalhes de uma nota
-    ├── produtos.py        # tela de produtos
-    ├── saidas.py          # tela de saídas
-    └── relatorios.py      # tela de relatórios
-```
+`Estruraa das pastas: 
+
+Proj-Estoque/
+│
+├── estoque.db                 # Banco SQLite
+├── requirements.txt
+│
+├── estoque/
+│   ├── main.py                # Inicializa o sistema
+│   ├── database.py            # Conexão + SQL
+│   ├── utils.py               # Funções auxiliares
+│   ├── app_state.py           # Estado da aplicação
+│   ├── xml_import.py          # Leitura da NF-e
+│   │
+│   └── ui/
+│       ├── components.py      # TreeView, Form, Botões
+│       ├── notas.py           # Tela de notas
+│       ├── notas_detalhes.py  # Itens da nota
+│       ├── produtos.py        # Cadastro de produtos
+│       ├── saidas.py          # Baixas de estoque
+│       └── relatorios.py      # Relatórios
+│
+└── xml/                       # XMLs importados (opcional)
+
+
+
+## Responsabilidade de cada arquivo
+
+**main.py**
+
+* Ponto de entrada da aplicação. Cria a janela principal, Notebook (abas), estilo e controla o fechamento do sistema.
+
+**database.py**
+
+* Único arquivo que conversa diretamente com o SQLite. Guarda q() para consultas e run() para INSERT/UPDATE/DELETE.
+
+**utils.py**
+
+* Regras reutilizáveis: datas, conversão numérica, formatação, cálculo de estoque e mapa de produtos.
+
+**xml_import.py**
+
+* Apenas interpreta o XML da NF-e. Ele não grava no banco; devolve nota e itens para a interface decidir o que fazer.
+
+**components.py**
+
+* Biblioteca de componentes da interface. Evita repetir código de formulários, tabelas e seleção.
 
 ## Como executar
 
