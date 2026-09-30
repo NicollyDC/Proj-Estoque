@@ -4,6 +4,7 @@ from tkinter import ttk, messagebox
 import functools
 import traceback
 
+
 def form(parent, title, fields, values=None):
     """
     Cria um formulário dinâmico.
@@ -45,17 +46,37 @@ def form(parent, title, fields, values=None):
             )
 
         else:
-            var = tk.StringVar(value="" if valor is None else str(valor))
-            widget = ttk.Entry(win, textvariable=var, width=40)
+            var = tk.StringVar(
+                value="" if valor is None else str(valor)
+            )
+            widget = ttk.Entry(
+                win,
+                textvariable=var,
+                width=40
+            )
 
-        widget.grid(row=i, column=1, padx=8, pady=3, sticky="w")
+        widget.grid(
+            row=i,
+            column=1,
+            padx=8,
+            pady=3,
+            sticky="w"
+        )
+
         variaveis[key] = var
 
     def salvar():
-        resultado.update({k: v.get() for k, v in variaveis.items()})
+        resultado.update({
+            k: v.get()
+            for k, v in variaveis.items()
+        })
         win.destroy()
 
-    ttk.Button(win, text="Salvar", command=salvar).grid(
+    ttk.Button(
+        win,
+        text="Salvar",
+        command=salvar
+    ).grid(
         row=len(fields),
         column=0,
         columnspan=2,
@@ -63,6 +84,7 @@ def form(parent, title, fields, values=None):
     )
 
     win.wait_window()
+
     return resultado or None
 
 
@@ -73,7 +95,12 @@ def tree(parent, cols):
     cols = [(chave, título, largura)]
     """
     frame = ttk.Frame(parent)
-    frame.pack(fill="both", expand=True, padx=6, pady=6)
+    frame.pack(
+        fill="both",
+        expand=True,
+        padx=6,
+        pady=6
+    )
 
     tabela = ttk.Treeview(
         frame,
@@ -83,14 +110,34 @@ def tree(parent, cols):
     )
 
     for key, title, width in cols:
-        tabela.heading(key, text=title)
-        tabela.column(key, width=width)
+        tabela.heading(
+            key,
+            text=title
+        )
+        tabela.column(
+            key,
+            width=width
+        )
 
-    barra = ttk.Scrollbar(frame, command=tabela.yview)
-    tabela.configure(yscrollcommand=barra.set)
+    barra = ttk.Scrollbar(
+        frame,
+        command=tabela.yview
+    )
 
-    tabela.pack(side="left", fill="both", expand=True)
-    barra.pack(side="right", fill="y")
+    tabela.configure(
+        yscrollcommand=barra.set
+    )
+
+    tabela.pack(
+        side="left",
+        fill="both",
+        expand=True
+    )
+
+    barra.pack(
+        side="right",
+        fill="y"
+    )
 
     return tabela
 
@@ -102,10 +149,18 @@ def buttons(parent, items):
     items = [(texto, função)]
     """
     frame = ttk.Frame(parent)
-    frame.pack(fill="x", padx=6, pady=4)
+    frame.pack(
+        fill="x",
+        padx=6,
+        pady=4
+    )
 
     for text, command in items:
-        ttk.Button(frame, text=text, command=command).pack(
+        ttk.Button(
+            frame,
+            text=text,
+            command=command
+        ).pack(
             side="left",
             padx=3
         )
@@ -136,13 +191,22 @@ def safe(func):
             return func(*args, **kwargs)
 
         except ValueError as e:
-            messagebox.showerror("Erro", str(e))
+            messagebox.showerror(
+                "Erro",
+                str(e)
+            )
 
         except sqlite3.IntegrityError as e:
-            messagebox.showerror("Banco de Dados", str(e))
+            messagebox.showerror(
+                "Banco de Dados",
+                str(e)
+            )
 
         except Exception as e:
             traceback.print_exc()
-            messagebox.showerror("Erro inesperado", str(e))
+            messagebox.showerror(
+                "Erro inesperado",
+                str(e)
+            )
 
     return wrapper

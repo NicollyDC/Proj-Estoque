@@ -1,7 +1,7 @@
 import xml.etree.ElementTree as ET
 
-from estoque.app_state import marcar_alteracao
-from estoque.ui.notas import nota_refresh
+from estoque_hotel.app_state import marcar_alteracao
+from estoque_hotel.ui.notas import nota_refresh
 
 
 def ler_xml_nfe(caminho):
@@ -11,12 +11,14 @@ def ler_xml_nfe(caminho):
         elemento.tag = elemento.tag.split("}")[-1]
 
     inf = raiz.find(".//infNFe")
+
     if inf is None:
         raise RuntimeError("Arquivo não é uma NF-e")
 
     def pegar(base, tag):
         if base is None:
             return ""
+
         return (base.findtext(tag) or "").strip()
 
     ide = inf.find("ide")
@@ -33,6 +35,7 @@ def ler_xml_nfe(caminho):
 
     for det in inf.findall("det"):
         prod = det.find("prod")
+
         itens.append({
             "codigo": pegar(prod, "cProd"),
             "descricao": pegar(prod, "xProd"),

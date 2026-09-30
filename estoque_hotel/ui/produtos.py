@@ -1,9 +1,9 @@
 import tkinter as tk
 from tkinter import ttk
 
-from estoque.database import q, run
-from estoque.utils import ESTOQUE_SQL, fmt, num, FIN
-from estoque.ui.components import tree, buttons, form, sel, safe
+from dados.hotel.database import q, run
+from estoque_hotel.utils import ESTOQUE_SQL, fmt, num, FIN
+from estoque_hotel.ui.components import tree, buttons, form, sel, safe
 
 # Campos do formulário
 PROD_F = [
@@ -88,8 +88,6 @@ def prod_edit(root, new=False):
             valores,
         )
 
-        
-
     prod_refresh()
 
 
@@ -112,10 +110,12 @@ def prod_del():
     """, (pid,))
 
     # Procura uma saída que utiliza este produto
+    # O produto fica em itens_saida, não diretamente em saidas.
     saida = q("""
-        SELECT data_hora
-        FROM saidas
-        WHERE produto_id = ?
+        SELECT s.data_hora
+        FROM itens_saida isd
+        JOIN saidas s ON s.id = isd.saida_id
+        WHERE isd.produto_id = ?
         LIMIT 1
     """, (pid,))
 
@@ -181,7 +181,7 @@ def criar_aba_produtos(notebook, root):
             ("Novo produto", lambda: prod_edit(root, True)),
             ("Editar produto", lambda: prod_edit(root)),
             ("Excluir produto", prod_del),
-             ("↻ Atualizar", prod_refresh),
+            ("↻ Atualizar", prod_refresh),
         ],
     )
 

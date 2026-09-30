@@ -1,10 +1,9 @@
-
 import tkinter as tk
 from tkinter import ttk, messagebox
 
-from estoque.database import q, run
-from estoque.ui.components import tree, sel, safe
-from estoque.utils import fmt, ESTOQUE_SQL
+from dados.hotel.database import q, run
+from estoque_hotel.ui.components import tree, sel, safe
+from estoque_hotel.utils import fmt, ESTOQUE_SQL
 
 
 # ---------------- PESQUISA DE PRODUTO ---------------- #
@@ -45,7 +44,9 @@ def selecionar_produto(root):
 
         tv.delete(*tv.get_children())
 
-        for p in q(ESTOQUE_SQL + " WHERE ativo=1 ORDER BY p.nome"):
+        for p in q(
+            ESTOQUE_SQL + " WHERE ativo=1 ORDER BY p.nome"
+        ):
             texto = f"{p['codigo']} {p['nome']}".lower()
 
             if termo in texto:

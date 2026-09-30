@@ -1,11 +1,13 @@
 import tkinter as tk
 import xml.etree.ElementTree as ET
 from tkinter import ttk, messagebox, filedialog
-from estoque.app_state import marcar_alteracao
-from estoque.database import q, run
-from estoque.utils import today
-from estoque.ui.components import tree, buttons, form, sel, safe
-from estoque.ui.notas_detalhes import nota_win
+
+from estoque_restaurante.app_state import marcar_alteracao
+from dados.restaurante.database import q, run
+from estoque_restaurante.utils import today
+from estoque_restaurante.ui.components import tree, buttons, form, sel, safe
+from estoque_restaurante.ui.notas_detalhes import nota_win
+
 
 # ---------------- CAMPOS ---------------- #
 
@@ -17,6 +19,7 @@ NOTA_F = [
     ("data_fat", "Data do faturamento", "entry", None),
 ]
 
+
 nt = None
 busca = None
 root_ref = None
@@ -25,7 +28,11 @@ root_ref = None
 # ---------------- UTILIDADES ---------------- #
 
 def nota_vals(r):
-    df = (r["data_fat"].strip() or today()) if r["faturada"] else None
+    df = (
+        (r["data_fat"].strip() or today())
+        if r["faturada"]
+        else None
+    )
 
     return (
         r["numero"].strip(),
@@ -45,10 +52,14 @@ def xml_nfe(path):
     inf = raiz.find(".//infNFe")
 
     if inf is None:
-        raise RuntimeError("O arquivo não parece ser um XML de NF-e.")
+        raise RuntimeError(
+            "O arquivo não parece ser um XML de NF-e."
+        )
 
     def g(base, tag):
-        return (base.findtext(tag) or "").strip() if base is not None else ""
+        return (
+            base.findtext(tag) or ""
+        ).strip() if base is not None else ""
 
     ide = inf.find("ide")
     emit = inf.find("emit")
@@ -56,8 +67,12 @@ def xml_nfe(path):
     nota = {
         "numero": g(ide, "nNF"),
         "fornecedor": g(emit, "xNome"),
-        "data": (g(ide, "dhEmi") or g(ide, "dEmi"))[:10],
-        "chave": (inf.get("Id") or "").replace("NFe", ""),
+        "data": (
+            g(ide, "dhEmi") or g(ide, "dEmi")
+        )[:10],
+        "chave": (
+            inf.get("Id") or ""
+        ).replace("NFe", ""),
     }
 
     itens = []
@@ -81,7 +96,8 @@ def xml_nfe(path):
 def nota_refresh():
     nt.delete(*nt.get_children())
 
-    for r in q("""
+    for r in q(
+        """
         SELECT n.*,
         (SELECT COUNT(*) FROM itens WHERE nota_id=n.id) AS qi,
         (SELECT COUNT(*) FROM itens
@@ -89,7 +105,9 @@ def nota_refresh():
         FROM notas n
         WHERE numero LIKE ?
         ORDER BY data DESC, id DESC
-    """, (f"%{busca.get().strip()}%",)):
+        """,
+        (f"%{busca.get().strip()}%",)
+    ):
 
         fat = (
             "Sim - " + (r["data_faturamento"] or "")
@@ -116,30 +134,41 @@ def nota_refresh():
 
 @safe
 def nota_nova():
-    r = form(root_ref, "Nova nota", NOTA_F, {"data": today()})
+    r = form(
+        root_ref,
+        "Nova nota",
+        NOTA_F,
+        {"data": today()}
+    )
 
     if r and r["numero"].strip():
 
-        cur = run("""
+        cur = run(
+            """
             INSERT INTO notas
             (numero, fornecedor, data, faturada, data_faturamento)
             VALUES (?, ?, ?, ?, ?)
-        """, nota_vals(r))
+            """,
+            nota_vals(r)
+        )
 
         nota_refresh()
         marcar_alteracao()
-        nota_win(root_ref, cur.lastrowid)
 
-
-
-
+        nota_win(
+            root_ref,
+            cur.lastrowid
+        )
 
 
 def nota_abrir(event=None):
     nid = sel(nt)
 
     if nid:
-        nota_win(root_ref, nid)
+        nota_win(
+            root_ref,
+            nid
+        )
 
 
 @safe
@@ -150,7 +179,11 @@ def nota_excluir():
         "Excluir",
         "Excluir a nota e todos os itens dela?"
     ):
-        run("DELETE FROM notas WHERE id=?", (nid,))
+        run(
+            "DELETE FROM notas WHERE id=?",
+            (nid,)
+        )
+
         nota_refresh()
         marcar_alteracao()
 
@@ -171,7 +204,10 @@ def nota_importar_xml():
         nota, itens = xml_nfe(path)
 
     except (ET.ParseError, RuntimeError) as ex:
-        messagebox.showerror("Erro", f"Não consegui ler o XML:\n{ex}")
+        messagebox.showerror(
+            "Erro",
+            f"Não consegui ler o XML:\n{ex}"
+        )
         return
 
     # Evita importar a mesma NF duas vezes
@@ -186,15 +222,18 @@ def nota_importar_xml():
         return
 
     # Cabeçalho da nota
-    cur = run("""
+    cur = run(
+        """
         INSERT INTO notas(numero, fornecedor, data, chave)
         VALUES (?, ?, ?, ?)
-    """, (
-        nota["numero"],
-        nota["fornecedor"],
-        nota["data"],
-        nota["chave"],
-    ))
+        """,
+        (
+            nota["numero"],
+            nota["fornecedor"],
+            nota["data"],
+            nota["chave"],
+        )
+    )
 
     nid = cur.lastrowid
     ok = 0
@@ -202,11 +241,17 @@ def nota_importar_xml():
     # Itens da nota
     for cod, desc, qtd, un, val in itens:
 
-        vinc = q("""
+        vinc = q(
+            """
             SELECT *
             FROM vinculos
             WHERE fornecedor=? AND cod_forn=?
-        """, (nota["fornecedor"], cod))
+            """,
+            (
+                nota["fornecedor"],
+                cod
+            )
+        )
 
         if vinc:
             pid = vinc[0]["produto_id"]
@@ -222,10 +267,12 @@ def nota_importar_xml():
         # Valor unitário automático
         valor_unit = (
             round(val / qtd_estoque, 4)
-            if qtd_estoque > 0 else 0
+            if qtd_estoque > 0
+            else 0
         )
 
-        run("""
+        run(
+            """
             INSERT INTO itens(
                 nota_id,
                 cod_forn,
@@ -239,18 +286,20 @@ def nota_importar_xml():
                 valor_unit
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            nid,
-            cod,
-            desc,
-            qtd,
-            un,
-            pid,
-            fator,
-            qtd_estoque,
-            val,
-            valor_unit,
-        ))
+            """,
+            (
+                nid,
+                cod,
+                desc,
+                qtd,
+                un,
+                pid,
+                fator,
+                qtd_estoque,
+                val,
+                valor_unit,
+            )
+        )
 
     nota_refresh()
 
@@ -258,7 +307,7 @@ def nota_importar_xml():
         "Importação concluída",
         f"{len(itens)} itens importados.\n"
         f"{ok} vinculados automaticamente.\n"
-        f"{len(itens)-ok} precisam de vínculo."
+        f"{len(itens) - ok} precisam de vínculo."
     )
 
     def _refresh():
@@ -267,7 +316,12 @@ def nota_importar_xml():
         except tk.TclError:
             pass
 
-    nota_win(root_ref, nid, on_close=_refresh)
+    nota_win(
+        root_ref,
+        nid,
+        on_close=_refresh
+    )
+
 
 # ---------------- ABA ---------------- #
 
@@ -277,17 +331,34 @@ def criar_aba_notas(notebook, root):
     root_ref = root
 
     aba = ttk.Frame(notebook)
-    notebook.add(aba, text="Notas")
+    notebook.add(
+        aba,
+        text="Notas"
+    )
 
     busca = tk.StringVar()
 
     barra = ttk.Frame(aba)
-    barra.pack(fill="x", padx=6, pady=4)
+    barra.pack(
+        fill="x",
+        padx=6,
+        pady=4
+    )
 
-    ttk.Label(barra, text="Buscar nº da nota:").pack(side="left")
+    ttk.Label(
+        barra,
+        text="Buscar nº da nota:"
+    ).pack(side="left")
 
-    e = ttk.Entry(barra, textvariable=busca, width=20)
-    e.pack(side="left", padx=4)
+    e = ttk.Entry(
+        barra,
+        textvariable=busca,
+        width=20
+    )
+    e.pack(
+        side="left",
+        padx=4
+    )
 
     ttk.Button(
         barra,
@@ -298,28 +369,46 @@ def criar_aba_notas(notebook, root):
     ttk.Button(
         barra,
         text="Limpar",
-        command=lambda: (busca.set(""), nota_refresh())
-    ).pack(side="left", padx=3)
+        command=lambda: (
+            busca.set(""),
+            nota_refresh()
+        )
+    ).pack(
+        side="left",
+        padx=3
+    )
 
-    e.bind("<Return>", lambda ev: nota_refresh())
+    e.bind(
+        "<Return>",
+        lambda ev: nota_refresh()
+    )
 
-    nt = tree(aba, [
-        ("numero", "Nº nota", 120),
-        ("forn", "Fornecedor", 250),
-        ("data", "Data", 100),
-        ("fat", "Faturada", 160),
-        ("itens", "Itens", 60),
-        ("sem", "Sem vínculo", 90),
-    ])
+    nt = tree(
+        aba,
+        [
+            ("numero", "Nº nota", 120),
+            ("forn", "Fornecedor", 250),
+            ("data", "Data", 100),
+            ("fat", "Faturada", 160),
+            ("itens", "Itens", 60),
+            ("sem", "Sem vínculo", 90),
+        ]
+    )
 
-    buttons(aba, [
-        ("Importar XML", nota_importar_xml),
-        ("Nova nota", nota_nova),
-        ("Abrir", nota_abrir),
-        ("Excluir", nota_excluir),
-    ])
+    buttons(
+        aba,
+        [
+            ("Importar XML", nota_importar_xml),
+            ("Nova nota", nota_nova),
+            ("Abrir", nota_abrir),
+            ("Excluir", nota_excluir),
+        ]
+    )
 
-    nt.bind("<Double-1>", nota_abrir)
+    nt.bind(
+        "<Double-1>",
+        nota_abrir
+    )
 
     nota_refresh()
 

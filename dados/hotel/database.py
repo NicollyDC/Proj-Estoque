@@ -1,11 +1,20 @@
 import sqlite3
 from pathlib import Path
 
-DB = Path(__file__).resolve().parent.parent / "estoque.db"
+
+# ---------------- BANCO DE DADOS ---------------- #
+
+BASE_DIR = Path(__file__).resolve().parent
+DB = BASE_DIR / "estoque.db"
+
+DB.parent.mkdir(parents=True, exist_ok=True)
 
 con = sqlite3.connect(DB)
 con.row_factory = sqlite3.Row
 con.execute("PRAGMA foreign_keys = ON")
+
+
+# ---------------- TABELAS ---------------- #
 
 con.executescript("""
 CREATE TABLE IF NOT EXISTS produtos(
@@ -69,17 +78,22 @@ CREATE TABLE IF NOT EXISTS itens_saida(
 );
 """)
 
+
 # ---------------- MIGRAÇÕES ---------------- #
 
+# Adiciona a chave da NF-e caso o banco seja antigo
 try:
     con.execute("ALTER TABLE notas ADD COLUMN chave TEXT")
 except sqlite3.OperationalError:
     pass
 
+
+# Adiciona o valor unitário caso o banco seja antigo
 try:
     con.execute("ALTER TABLE itens ADD COLUMN valor_unit REAL")
 except sqlite3.OperationalError:
     pass
+
 
 # Caso alguém tenha um banco antigo sem itens_saida
 try:
@@ -95,6 +109,10 @@ try:
     """)
 except sqlite3.OperationalError:
     pass
+
+
+con.commit()
+
 
 # ---------------- FUNÇÕES ---------------- #
 

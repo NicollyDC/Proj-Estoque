@@ -1,9 +1,10 @@
 import tkinter as tk
 from tkinter import ttk
-from estoque.app_state import marcar_alteracao
-from estoque.database import q
-from estoque.utils import fmt, TIPOS
-from estoque.ui.components import tree
+
+from estoque_hotel.app_state import marcar_alteracao
+from dados.hotel.database import q
+from estoque_hotel.utils import fmt, TIPOS
+from estoque_hotel.ui.components import tree
 
 rt = None
 per = None
@@ -34,20 +35,21 @@ def rel_gerar():
             strftime(?, s.data_hora) AS periodo,
             {'p.nome' if por_prod.get() else "''"} AS produto,
             s.tipo,
-            SUM(s.qtd) AS qtd,
+            SUM(isd.qtd) AS qtd,
             SUM(
-                s.qtd * COALESCE(
+                isd.qtd * COALESCE(
                     (
                         SELECT SUM(valor_total) /
-                               NULLIF(SUM(qtd_estoque),0)
+                               NULLIF(SUM(qtd_estoque), 0)
                         FROM itens
-                        WHERE produto_id=s.produto_id
+                        WHERE produto_id = isd.produto_id
                     ),
                     0
                 )
             ) AS custo
         FROM saidas s
-        JOIN produtos p ON p.id=s.produto_id
+        JOIN itens_saida isd ON isd.saida_id = s.id
+        JOIN produtos p ON p.id = isd.produto_id
         {where}
         GROUP BY periodo, produto, s.tipo
         ORDER BY periodo DESC, s.tipo
@@ -89,21 +91,46 @@ def criar_aba_relatorios(notebook, root):
     )
     tipo.set("todos")
 
-    por_prod = ttk.Checkbutton
-
     filtro = ttk.Frame(aba)
     filtro.pack(fill="x", padx=6, pady=6)
 
-    ttk.Label(filtro, text="Agrupar por:").pack(side="left")
-    per.pack(in_=filtro, side="left", padx=4)
+    ttk.Label(
+        filtro,
+        text="Agrupar por:"
+    ).pack(side="left")
 
-    ttk.Label(filtro, text="Tipo:").pack(side="left")
-    tipo.pack(in_=filtro, side="left", padx=4)
+    per.pack(
+        in_=filtro,
+        side="left",
+        padx=4
+    )
 
-    detalhar = ttk.Checkbutton(filtro, text="Detalhar por produto")
+    ttk.Label(
+        filtro,
+        text="Tipo:"
+    ).pack(side="left")
+
+    tipo.pack(
+        in_=filtro,
+        side="left",
+        padx=4
+    )
+
+    detalhar = ttk.Checkbutton(
+        filtro,
+        text="Detalhar por produto"
+    )
+
     detalhar_var = tk.IntVar(value=0)
-    detalhar.config(variable=detalhar_var)
-    detalhar.pack(side="left", padx=6)
+
+    detalhar.config(
+        variable=detalhar_var
+    )
+
+    detalhar.pack(
+        side="left",
+        padx=6
+    )
 
     class Wrapper:
         def get(self):
@@ -115,7 +142,10 @@ def criar_aba_relatorios(notebook, root):
         filtro,
         text="Gerar",
         command=rel_gerar
-    ).pack(side="left", padx=6)
+    ).pack(
+        side="left",
+        padx=6
+    )
 
     rt = tree(
         aba,
@@ -131,6 +161,9 @@ def criar_aba_relatorios(notebook, root):
     ttk.Label(
         aba,
         text="Custo estimado = quantidade de saída × custo médio de entrada."
-    ).pack(anchor="w", padx=8)
+    ).pack(
+        anchor="w",
+        padx=8
+    )
 
     return aba

@@ -1,9 +1,10 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 
-from estoque.database import q, run
-from estoque.utils  import today, fmt, num
-from estoque.ui.components import tree, buttons, form, sel, safe
+from dados.hotel.database import q, run
+from estoque_hotel.utils import today, fmt, num
+from estoque_hotel.ui.components import tree, buttons, form, sel, safe
+
 
 ITEM_HELP = "Qtd. no estoque (vazio = qtd × fator)"
 
@@ -47,7 +48,10 @@ def nota_win(root, nid, on_close=None):
     )
 
     def refresh():
-        n = q("SELECT * FROM notas WHERE id=?", (nid,))[0]
+        n = q(
+            "SELECT * FROM notas WHERE id=?",
+            (nid,)
+        )[0]
 
         fat = (
             f"FATURADA em {n['data_faturamento'] or '-'}"
@@ -56,7 +60,12 @@ def nota_win(root, nid, on_close=None):
         )
 
         head.config(
-            text=f"Nota {n['numero']} | {n['fornecedor']} | {n['data']} | {fat}"
+            text=(
+                f"Nota {n['numero']} | "
+                f"{n['fornecedor']} | "
+                f"{n['data']} | "
+                f"{fat}"
+            )
         )
 
         t.delete(*t.get_children())
@@ -89,12 +98,23 @@ def nota_win(root, nid, on_close=None):
 
     @safe
     def edit_head():
-        from estoque.ui.notas import NOTA_F
+        from estoque_hotel.ui.notas import NOTA_F
 
-        n = dict(q("SELECT * FROM notas WHERE id=?", (nid,))[0])
+        n = dict(
+            q(
+                "SELECT * FROM notas WHERE id=?",
+                (nid,)
+            )[0]
+        )
+
         n["data_fat"] = n["data_faturamento"]
 
-        r = form(w, "Cabeçalho da nota", NOTA_F, n)
+        r = form(
+            w,
+            "Cabeçalho da nota",
+            NOTA_F,
+            n
+        )
 
         if not r:
             return
@@ -127,7 +147,8 @@ def nota_win(root, nid, on_close=None):
     @safe
     def item_edit(iid=None):
         fornecedor = q(
-            "SELECT fornecedor FROM notas WHERE id=?", (nid,)
+            "SELECT fornecedor FROM notas WHERE id=?",
+            (nid,)
         )[0]["fornecedor"]
 
         mapa = prod_map()
@@ -136,12 +157,22 @@ def nota_win(root, nid, on_close=None):
         valores = {}
 
         if iid:
-            it = q("SELECT * FROM itens WHERE id=?", (iid,))[0]
+            it = q(
+                "SELECT * FROM itens WHERE id=?",
+                (iid,)
+            )[0]
 
             valores = dict(it)
-            valores["produto"] = reverso.get(it["produto_id"], "")
+            valores["produto"] = reverso.get(
+                it["produto_id"],
+                ""
+            )
 
-            if it["qtd_estoque"] == (it["qtd"] or 0) * (it["fator"] or 1):
+            if it["qtd_estoque"] == (
+                it["qtd"] or 0
+            ) * (
+                it["fator"] or 1
+            ):
                 valores["qtd_estoque"] = None
 
         campos = [
@@ -155,7 +186,12 @@ def nota_win(root, nid, on_close=None):
             ("valor_total", "Valor total", "entry", None),
         ]
 
-        r = form(w, "Item da nota", campos, valores)
+        r = form(
+            w,
+            "Item da nota",
+            campos,
+            valores
+        )
 
         if not r:
             return
@@ -168,15 +204,29 @@ def nota_win(root, nid, on_close=None):
             SELECT * FROM vinculos
             WHERE fornecedor=? AND cod_forn=?
             """,
-            (fornecedor, codigo),
+            (
+                fornecedor,
+                codigo,
+            ),
         )
 
         if not pid and vinc:
             pid = vinc[0]["produto_id"]
 
-        fator = num(r["fator"], vinc[0]["fator"] if vinc else 1.0)
-        qtd = num(r["qtd"], 0.0)
-        estoque = num(r["qtd_estoque"], qtd * fator)
+        fator = num(
+            r["fator"],
+            vinc[0]["fator"] if vinc else 1.0
+        )
+
+        qtd = num(
+            r["qtd"],
+            0.0
+        )
+
+        estoque = num(
+            r["qtd_estoque"],
+            qtd * fator
+        )
 
         dados = (
             codigo,
@@ -199,6 +249,7 @@ def nota_win(root, nid, on_close=None):
                 """,
                 dados + (iid,),
             )
+
         else:
             run(
                 """
@@ -216,7 +267,12 @@ def nota_win(root, nid, on_close=None):
                 INSERT OR REPLACE INTO vinculos
                 VALUES (?,?,?,?)
                 """,
-                (fornecedor, codigo, pid, fator),
+                (
+                    fornecedor,
+                    codigo,
+                    pid,
+                    fator,
+                ),
             )
 
         refresh()
@@ -305,9 +361,13 @@ def nota_win(root, nid, on_close=None):
         iid = sel(t)
 
         if iid and messagebox.askyesno(
-            "Excluir", "Excluir este item?"
+            "Excluir",
+            "Excluir este item?"
         ):
-            run("DELETE FROM itens WHERE id=?", (iid,))
+            run(
+                "DELETE FROM itens WHERE id=?",
+                (iid,)
+            )
             refresh()
 
     def editar_item(event=None):
@@ -327,12 +387,17 @@ def nota_win(root, nid, on_close=None):
         ],
     )
 
-    t.bind("<Double-1>", editar_item)
+    t.bind(
+        "<Double-1>",
+        editar_item
+    )
 
     if on_close:
         w.bind(
-        "<Destroy>",
-        lambda e: on_close() if e.widget is w else None
-    )
+            "<Destroy>",
+            lambda e: on_close()
+            if e.widget is w
+            else None
+        )
 
     refresh()
