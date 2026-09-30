@@ -30,10 +30,28 @@ def fechar():
     root.destroy()
 
 
+def voltar_painel():
+    if tem_alteracoes():
+        resp = messagebox.askyesnocancel(
+            "Salvar alterações",
+            "Existem alterações não salvas.\n\n"
+            "Deseja salvar antes de voltar ao painel?"
+        )
+
+        if resp is None:
+            return
+
+        if resp:
+            salvar_com_mensagem()
+
+    root.destroy()
+
+
 root = tk.Tk()
 
 root.title("Controle de Estoque - Restaurante")
 root.geometry("1100x620")
+
 
 style = ttk.Style()
 style.theme_use("clam")
@@ -60,13 +78,41 @@ style.configure(
     font=("Segoe UI", 10, "bold")
 )
 
+
+# ---------------- TOPO ---------------- #
+
+topo = ttk.Frame(root)
+topo.pack(fill="x", padx=10, pady=8)
+
+
+btn_voltar = ttk.Button(
+    topo,
+    text="← Voltar ao painel inicial",
+    command=voltar_painel
+)
+
+btn_voltar.pack(side="left")
+
+
+# ---------------- ABAS ---------------- #
+
 notebook = ttk.Notebook(root)
-notebook.pack(fill="both", expand=True)
+notebook.pack(
+    fill="both",
+    expand=True,
+    padx=10,
+    pady=(0, 10)
+)
+
 
 criar_aba_notas(notebook, root)
+
 criar_aba_produtos(notebook, root)
+
 criar_aba_saidas(notebook, root)
+
 criar_aba_relatorios(notebook, root)
+
 
 root.protocol("WM_DELETE_WINDOW", fechar)
 

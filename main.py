@@ -4,6 +4,9 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 
 
+processo_atual = None
+
+
 def abrir_hotel():
     abrir_sistema("estoque_hotel.main")
 
@@ -13,14 +16,18 @@ def abrir_restaurante():
 
 
 def abrir_sistema(modulo):
+    global processo_atual
+
     try:
-        subprocess.Popen([
+        processo_atual = subprocess.Popen([
             sys.executable,
             "-m",
             modulo
         ])
 
-        root.destroy()
+        root.withdraw()
+
+        verificar_processo()
 
     except Exception as e:
         messagebox.showerror(
@@ -28,6 +35,34 @@ def abrir_sistema(modulo):
             f"Não foi possível abrir o sistema.\n\n{e}"
         )
 
+
+def verificar_processo():
+    global processo_atual
+
+    if processo_atual is None:
+        return
+
+    if processo_atual.poll() is None:
+        root.after(300, verificar_processo)
+    else:
+        processo_atual = None
+        root.deiconify()
+
+
+def fechar():
+    global processo_atual
+
+    if processo_atual is not None:
+        try:
+            if processo_atual.poll() is None:
+                processo_atual.terminate()
+        except Exception:
+            pass
+
+    root.destroy()
+
+
+# ---------------- JANELA PRINCIPAL ---------------- #
 
 root = tk.Tk()
 
@@ -112,6 +147,6 @@ btn_restaurante.grid(
 )
 
 
-# ---------------- FECHAR ---------------- #
+root.protocol("WM_DELETE_WINDOW", fechar)
 
 root.mainloop()
