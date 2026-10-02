@@ -1,0 +1,3 @@
+# ---------------- CONFIGURAÇÕES DO HOTEL ---------------- #
+
+CNPJ_ESTABELECIMENTO = "00810115000141"

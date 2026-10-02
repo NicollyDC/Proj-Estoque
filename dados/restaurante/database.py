@@ -81,16 +81,21 @@ CREATE TABLE IF NOT EXISTS itens_saida(
 
 # ---------------- MIGRAÇÕES ---------------- #
 
+
 # Adiciona a chave da NF-e caso o banco seja antigo
 try:
-    con.execute("ALTER TABLE notas ADD COLUMN chave TEXT")
+    con.execute(
+        "ALTER TABLE notas ADD COLUMN chave TEXT"
+    )
 except sqlite3.OperationalError:
     pass
 
 
 # Adiciona o valor unitário caso o banco seja antigo
 try:
-    con.execute("ALTER TABLE itens ADD COLUMN valor_unit REAL")
+    con.execute(
+        "ALTER TABLE itens ADD COLUMN valor_unit REAL"
+    )
 except sqlite3.OperationalError:
     pass
 
@@ -109,6 +114,13 @@ try:
     """)
 except sqlite3.OperationalError:
     pass
+
+
+# Índice para localizar rapidamente NF-e pela chave
+con.execute("""
+    CREATE INDEX IF NOT EXISTS idx_notas_chave
+    ON notas(chave)
+""")
 
 
 con.commit()

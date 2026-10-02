@@ -1,0 +1,2 @@
+# ---------------- CONFIGURAÇÕES DO RESTAURANTE ---------------- #
+CNPJ_ESTABELECIMENTO = "62719684000133"
