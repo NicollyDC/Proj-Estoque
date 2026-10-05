@@ -166,7 +166,7 @@ def obter_custo_medio(produto_id):
 def saida_win(root, sid):
     w = tk.Toplevel(root)
     w.title(f"Saída #{sid}")
-    w.geometry("850x560")
+    w.geometry("850x600")
 
     cab = q(
         "SELECT * FROM saidas WHERE id=?",
@@ -176,21 +176,85 @@ def saida_win(root, sid):
     topo = ttk.Frame(w)
     topo.pack(fill="x", padx=10, pady=8)
 
+    # ---------------- RESPONSÁVEL ---------------- #
+
     ttk.Label(
         topo,
-        text=f"Responsável: {cab['responsavel']}",
-        font=("Segoe UI", 10, "bold")
-    ).grid(row=0, column=0, sticky="w")
+        text="Responsável pela retirada:"
+    ).grid(
+        row=0,
+        column=0,
+        sticky="w"
+    )
+
+    responsavel = tk.StringVar(
+        value=cab["responsavel"] or ""
+    )
+
+    ttk.Entry(
+        topo,
+        textvariable=responsavel,
+        width=30
+    ).grid(
+        row=0,
+        column=1,
+        padx=(6, 5),
+        sticky="w"
+    )
+
+    @safe
+    def salvar_responsavel():
+        nome = responsavel.get().strip()
+
+        if not nome:
+            messagebox.showwarning(
+                "Atenção",
+                "Informe o responsável pela retirada."
+            )
+            return
+
+        run("""
+            UPDATE saidas
+            SET responsavel=?
+            WHERE id=?
+        """, (
+            nome,
+            sid,
+        ))
+
+        messagebox.showinfo(
+            "Salvo",
+            "Responsável atualizado com sucesso."
+        )
+
+    ttk.Button(
+        topo,
+        text="Salvar",
+        command=salvar_responsavel
+    ).grid(
+        row=0,
+        column=2,
+        padx=5
+    )
 
     ttk.Label(
         topo,
         text=f"Tipo: {cab['tipo']}"
-    ).grid(row=0, column=1, padx=20)
+    ).grid(
+        row=0,
+        column=3,
+        padx=20
+    )
 
     ttk.Label(
         topo,
         text=f"Data: {cab['data_hora']}"
-    ).grid(row=0, column=2)
+    ).grid(
+        row=0,
+        column=4
+    )
+
+    # ---------------- ITENS ---------------- #
 
     tv = tree(
         w,
@@ -237,6 +301,8 @@ def saida_win(root, sid):
             )
 
         total_var.set(f"R$ {total:.2f}")
+
+    # ---------------- ADICIONAR PRODUTO ---------------- #
 
     @safe
     def adicionar():
@@ -291,7 +357,11 @@ def saida_win(root, sid):
 
         ttk.Label(
             pop,
-            text=f"Estoque disponível: {fmt(round(estoque, 4))} {prod['unidade'] or ''}"
+            text=(
+                f"Estoque disponível: "
+                f"{fmt(round(estoque, 4))} "
+                f"{prod['unidade'] or ''}"
+            )
         ).pack()
 
         ttk.Label(
@@ -329,8 +399,10 @@ def saida_win(root, sid):
                 messagebox.showwarning(
                     "Estoque insuficiente",
                     (
-                        f"A quantidade informada é maior que o estoque disponível.\n\n"
-                        f"Estoque disponível: {fmt(round(estoque, 4))}\n"
+                        f"A quantidade informada é maior que "
+                        f"o estoque disponível.\n\n"
+                        f"Estoque disponível: "
+                        f"{fmt(round(estoque, 4))}\n"
                         f"Quantidade solicitada: {fmt(qv)}"
                     )
                 )
@@ -367,6 +439,8 @@ def saida_win(root, sid):
             command=salvar
         ).pack(pady=(0, 10))
 
+    # ---------------- EXCLUIR ITEM ---------------- #
+
     @safe
     def excluir_item():
         iid = sel(tv)
@@ -385,8 +459,14 @@ def saida_win(root, sid):
 
             refresh()
 
+    # ---------------- BOTÕES ---------------- #
+
     botoes = ttk.Frame(w)
-    botoes.pack(fill="x", padx=10, pady=6)
+    botoes.pack(
+        fill="x",
+        padx=10,
+        pady=6
+    )
 
     ttk.Button(
         botoes,
@@ -402,6 +482,8 @@ def saida_win(root, sid):
         side="left",
         padx=6
     )
+
+    # ---------------- RODAPÉ ---------------- #
 
     rodape = ttk.Frame(w)
     rodape.pack(

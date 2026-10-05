@@ -5,6 +5,7 @@ from dados.restaurante.database import q, run
 from estoque_restaurante.utils import ESTOQUE_SQL, fmt, num, FIN
 from estoque_restaurante.ui.components import tree, buttons, form, sel, safe
 
+
 # Campos do formulário
 PROD_F = [
     ("codigo", "Código", "entry", None),
@@ -15,17 +16,35 @@ PROD_F = [
     ("ativo", "Ativo", "check", None),
 ]
 
-pt = None  # Treeview global da aba
+pt = None
+busca_produto = None
 
 
 def prod_refresh():
-    """Atualiza a tabela de produtos."""
-    global pt
+    """Atualiza a tabela de produtos, respeitando a pesquisa."""
+    global pt, busca_produto
 
     pt.delete(*pt.get_children())
 
+    termo = ""
+
+    if busca_produto is not None:
+        termo = busca_produto.get().strip().lower()
+
     for r in q(ESTOQUE_SQL + " ORDER BY p.nome"):
-        baixo = r["ativo"] and r["estoque"] <= (r["minimo"] or 0)
+
+        texto = (
+            f"{r['codigo']} "
+            f"{r['nome']}"
+        ).lower()
+
+        if termo and termo not in texto:
+            continue
+
+        baixo = (
+            r["ativo"]
+            and r["estoque"] <= (r["minimo"] or 0)
+        )
 
         pt.insert(
             "",
@@ -54,12 +73,23 @@ def prod_edit(root, new=False):
         return
 
     atual = (
-        dict(q("SELECT * FROM produtos WHERE id=?", (pid,))[0])
+        dict(q(
+            "SELECT * FROM produtos WHERE id=?",
+            (pid,)
+        )[0])
         if pid
-        else {"ativo": 1, "finalidade": "uso e consumo"}
+        else {
+            "ativo": 1,
+            "finalidade": "uso e consumo"
+        }
     )
 
-    r = form(root, "Produto", PROD_F, atual)
+    r = form(
+        root,
+        "Produto",
+        PROD_F,
+        atual
+    )
 
     if not r or not r["codigo"].strip() or not r["nome"].strip():
         return
@@ -110,7 +140,6 @@ def prod_del():
     """, (pid,))
 
     # Procura uma saída que utiliza este produto
-    # O produto fica em itens_saida, não diretamente em saidas.
     saida = q("""
         SELECT s.data_hora
         FROM itens_saida isd
@@ -137,8 +166,14 @@ def prod_del():
                 "Deseja apenas inativá-lo?"
             )
 
-        if messagebox.askyesno("Produto em uso", msg):
-            run("UPDATE produtos SET ativo = 0 WHERE id = ?", (pid,))
+        if messagebox.askyesno(
+            "Produto em uso",
+            msg
+        ):
+            run(
+                "UPDATE produtos SET ativo = 0 WHERE id = ?",
+                (pid,)
+            )
             prod_refresh()
 
         return
@@ -148,16 +183,60 @@ def prod_del():
         "Excluir produto",
         "Deseja excluir este produto permanentemente?"
     ):
-        run("DELETE FROM produtos WHERE id = ?", (pid,))
+        run(
+            "DELETE FROM produtos WHERE id = ?",
+            (pid,)
+        )
         prod_refresh()
 
 
 def criar_aba_produtos(notebook, root):
     """Cria a aba Produtos dentro do Notebook."""
-    global pt
+    global pt, busca_produto
 
     aba = ttk.Frame(notebook)
-    notebook.add(aba, text="Produtos / Estoque")
+    notebook.add(
+        aba,
+        text="Produtos / Estoque"
+    )
+
+    # ---------------- PESQUISA ---------------- #
+
+    busca_frame = ttk.Frame(aba)
+    busca_frame.pack(
+        fill="x",
+        padx=6,
+        pady=(6, 0)
+    )
+
+    ttk.Label(
+        busca_frame,
+        text="Pesquisar:"
+    ).pack(
+        side="left",
+        padx=(0, 6)
+    )
+
+    busca_produto = tk.StringVar()
+
+    ttk.Entry(
+        busca_frame,
+        textvariable=busca_produto,
+        width=40
+    ).pack(
+        side="left"
+    )
+
+    ttk.Button(
+        busca_frame,
+        text="Limpar",
+        command=lambda: busca_produto.set("")
+    ).pack(
+        side="left",
+        padx=6
+    )
+
+    # ---------------- TABELA ---------------- #
 
     pt = tree(
         aba,
@@ -173,19 +252,44 @@ def criar_aba_produtos(notebook, root):
         ],
     )
 
-    pt.tag_configure("low", background="#ffd6d6")
+    pt.tag_configure(
+        "low",
+        background="#ffd6d6"
+    )
+
+    # ---------------- BOTÕES ---------------- #
 
     buttons(
         aba,
         [
-            ("Novo produto", lambda: prod_edit(root, True)),
-            ("Editar produto", lambda: prod_edit(root)),
-            ("Excluir produto", prod_del),
-            ("↻ Atualizar", prod_refresh),
+            (
+                "Novo produto",
+                lambda: prod_edit(root, True)
+            ),
+            (
+                "Editar produto",
+                lambda: prod_edit(root)
+            ),
+            (
+                "Excluir produto",
+                prod_del
+            ),
+            (
+                "↻ Atualizar",
+                prod_refresh
+            ),
         ],
     )
 
-    pt.bind("<Double-1>", lambda e: prod_edit(root))
+    pt.bind(
+        "<Double-1>",
+        lambda e: prod_edit(root)
+    )
+
+    busca_produto.trace_add(
+        "write",
+        lambda *_: prod_refresh()
+    )
 
     prod_refresh()
 

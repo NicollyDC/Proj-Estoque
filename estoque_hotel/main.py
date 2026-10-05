@@ -9,17 +9,159 @@ from estoque_hotel.ui.saidas import criar_aba_saidas
 from estoque_hotel.ui.relatorios import criar_aba_relatorios
 
 
+# ============================================================
+# CORES
+# ============================================================
+
+FUNDO = "#F4F6F8"
+BRANCO = "#FFFFFF"
+TEXTO = "#1F2937"
+TEXTO_SECUNDARIO = "#6B7280"
+BORDA = "#E5E7EB"
+PRINCIPAL = "#2563EB"
+PRINCIPAL_HOVER = "#1D4ED8"
+
+
+# ============================================================
+# BOTÃO ARREDONDADO
+# ============================================================
+
+def criar_botao_arredondado(
+    parent,
+    texto,
+    comando,
+    largura=150,
+    altura=38,
+    cor=PRINCIPAL,
+    cor_hover=PRINCIPAL_HOVER
+):
+    canvas = tk.Canvas(
+        parent,
+        width=largura,
+        height=altura,
+        bg=parent.cget("bg"),
+        highlightthickness=0
+    )
+
+    canvas.pack()
+
+    raio = 10
+
+    pontos = [
+        raio, 0,
+        largura - raio, 0,
+        largura, raio,
+        largura, altura - raio,
+        largura - raio, altura,
+        raio, altura,
+        0, altura - raio,
+        0, raio
+    ]
+
+    canvas.create_polygon(
+        pontos,
+        fill=cor,
+        outline=cor
+    )
+
+    canvas.create_oval(
+        0,
+        0,
+        raio * 2,
+        raio * 2,
+        fill=cor,
+        outline=cor
+    )
+
+    canvas.create_oval(
+        largura - raio * 2,
+        0,
+        largura,
+        raio * 2,
+        fill=cor,
+        outline=cor
+    )
+
+    canvas.create_oval(
+        0,
+        altura - raio * 2,
+        raio * 2,
+        altura,
+        fill=cor,
+        outline=cor
+    )
+
+    canvas.create_oval(
+        largura - raio * 2,
+        altura - raio * 2,
+        largura,
+        altura,
+        fill=cor,
+        outline=cor
+    )
+
+    texto_id = canvas.create_text(
+        largura // 2,
+        altura // 2,
+        text=texto,
+        fill=BRANCO,
+        font=("Segoe UI", 10, "bold")
+    )
+
+    def entrar(event):
+        canvas.itemconfig(
+            "all",
+            fill=cor_hover
+        )
+
+        canvas.itemconfig(
+            texto_id,
+            fill=BRANCO
+        )
+
+    def sair(event):
+        canvas.itemconfig(
+            "all",
+            fill=cor
+        )
+
+        canvas.itemconfig(
+            texto_id,
+            fill=BRANCO
+        )
+
+    def clicar(event):
+        comando()
+
+    canvas.bind("<Enter>", entrar)
+    canvas.bind("<Leave>", sair)
+    canvas.bind("<Button-1>", clicar)
+
+    return canvas
+
+
+# ============================================================
+# JANELA DO HOTEL
+# ============================================================
+
 def criar_janela_hotel(painel, ao_fechar=None):
+
     root = tk.Toplevel(painel)
 
     root.title("Controle de Estoque - Hotel")
-    root.geometry("1100x620")
+    root.geometry("1150x680")
+    root.minsize(1000, 600)
 
-    # --------------------------------------------------
+    root.configure(
+        bg=FUNDO
+    )
+
+    # ========================================================
     # SALVAR
-    # --------------------------------------------------
+    # ========================================================
 
     def salvar_com_mensagem():
+
         salvar()
 
         messagebox.showinfo(
@@ -28,11 +170,12 @@ def criar_janela_hotel(painel, ao_fechar=None):
             parent=root
         )
 
-    # --------------------------------------------------
-    # FECHAR / VOLTAR
-    # --------------------------------------------------
+    # ========================================================
+    # FECHAR
+    # ========================================================
 
     def fechar():
+
         if tem_alteracoes():
 
             resp = messagebox.askyesnocancel(
@@ -52,7 +195,12 @@ def criar_janela_hotel(painel, ao_fechar=None):
         if ao_fechar:
             ao_fechar()
 
+    # ========================================================
+    # VOLTAR AO PAINEL
+    # ========================================================
+
     def voltar_painel():
+
         if tem_alteracoes():
 
             resp = messagebox.askyesnocancel(
@@ -73,68 +221,198 @@ def criar_janela_hotel(painel, ao_fechar=None):
         if ao_fechar:
             ao_fechar()
 
-    # --------------------------------------------------
+    # ========================================================
     # ESTILO
-    # --------------------------------------------------
+    # ========================================================
 
     style = ttk.Style()
+
     style.theme_use("clam")
 
     style.configure(
-        "Treeview",
-        rowheight=26,
+        "Hotel.TFrame",
+        background=FUNDO
+    )
+
+    style.configure(
+        "HotelCard.TFrame",
+        background=BRANCO
+    )
+
+    style.configure(
+        "Hotel.TLabel",
+        background=FUNDO,
+        foreground=TEXTO,
         font=("Segoe UI", 10)
     )
 
     style.configure(
+        "HotelTitle.TLabel",
+        background=FUNDO,
+        foreground=TEXTO,
+        font=("Segoe UI", 18, "bold")
+    )
+
+    style.configure(
+        "HotelSubtitle.TLabel",
+        background=FUNDO,
+        foreground=TEXTO_SECUNDARIO,
+        font=("Segoe UI", 9)
+    )
+
+    style.configure(
+        "Hotel.TNotebook",
+        background=FUNDO,
+        borderwidth=0
+    )
+
+    style.configure(
+        "Hotel.TNotebook.Tab",
+        background="#E5E7EB",
+        foreground=TEXTO_SECUNDARIO,
+        padding=(20, 10),
+        font=("Segoe UI", 10, "bold"),
+        borderwidth=0
+    )
+
+    style.map(
+        "Hotel.TNotebook.Tab",
+        background=[
+            ("selected", BRANCO),
+            ("active", "#DCE5F5")
+        ],
+        foreground=[
+            ("selected", PRINCIPAL),
+            ("active", TEXTO)
+        ]
+    )
+
+    style.configure(
+        "Treeview",
+        background=BRANCO,
+        foreground=TEXTO,
+        fieldbackground=BRANCO,
+        rowheight=30,
+        font=("Segoe UI", 10),
+        borderwidth=0
+    )
+
+    style.configure(
         "Treeview.Heading",
-        font=("Segoe UI", 10, "bold")
+        background="#F8FAFC",
+        foreground=TEXTO,
+        font=("Segoe UI", 10, "bold"),
+        relief="flat",
+        padding=(8, 8)
     )
 
-    style.configure(
-        "TButton",
-        padding=6
+    style.map(
+        "Treeview",
+        background=[
+            ("selected", "#DBEAFE")
+        ],
+        foreground=[
+            ("selected", TEXTO)
+        ]
     )
 
-    style.configure(
-        "TNotebook.Tab",
-        padding=(16, 8),
-        font=("Segoe UI", 10, "bold")
+    # ========================================================
+    # CABEÇALHO
+    # ========================================================
+
+    cabecalho = tk.Frame(
+        root,
+        bg=FUNDO
     )
 
-    # --------------------------------------------------
-    # TOPO
-    # --------------------------------------------------
-
-    topo = ttk.Frame(root)
-    topo.pack(
+    cabecalho.pack(
         fill="x",
-        padx=10,
-        pady=8
+        padx=28,
+        pady=(24, 12)
     )
 
-    btn_voltar = ttk.Button(
-        topo,
-        text="← Voltar ao painel inicial",
-        command=voltar_painel
+    esquerda = tk.Frame(
+        cabecalho,
+        bg=FUNDO
     )
 
-    btn_voltar.pack(
-        side="left"
+    esquerda.pack(
+        side="left",
+        fill="x",
+        expand=True
     )
 
-    # --------------------------------------------------
-    # ABAS
-    # --------------------------------------------------
+    tk.Label(
+        esquerda,
+        text="Controle de Estoque",
+        bg=FUNDO,
+        fg=TEXTO,
+        font=("Segoe UI", 20, "bold")
+    ).pack(
+        anchor="w"
+    )
 
-    notebook = ttk.Notebook(root)
+    tk.Label(
+        esquerda,
+        text="Hotel",
+        bg=FUNDO,
+        fg=TEXTO_SECUNDARIO,
+        font=("Segoe UI", 10)
+    ).pack(
+        anchor="w",
+        pady=(2, 0)
+    )
+
+    direita = tk.Frame(
+        cabecalho,
+        bg=FUNDO
+    )
+
+    direita.pack(
+        side="right"
+    )
+
+    criar_botao_arredondado(
+        direita,
+        "← Voltar ao painel",
+        voltar_painel,
+        largura=170,
+        altura=40
+    )
+
+    # ========================================================
+    # ÁREA PRINCIPAL
+    # ========================================================
+
+    area = tk.Frame(
+        root,
+        bg=BRANCO,
+        highlightbackground=BORDA,
+        highlightthickness=1
+    )
+
+    area.pack(
+        fill="both",
+        expand=True,
+        padx=28,
+        pady=(4, 24)
+    )
+
+    notebook = ttk.Notebook(
+        area,
+        style="Hotel.TNotebook"
+    )
 
     notebook.pack(
         fill="both",
         expand=True,
-        padx=10,
-        pady=(0, 10)
+        padx=12,
+        pady=12
     )
+
+    # ========================================================
+    # ABAS
+    # ========================================================
 
     criar_aba_notas(
         notebook,
@@ -156,9 +434,9 @@ def criar_janela_hotel(painel, ao_fechar=None):
         root
     )
 
-    # --------------------------------------------------
+    # ========================================================
     # FECHAMENTO
-    # --------------------------------------------------
+    # ========================================================
 
     root.protocol(
         "WM_DELETE_WINDOW",
