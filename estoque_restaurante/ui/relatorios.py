@@ -1,34 +1,96 @@
 import tkinter as tk
 from tkinter import ttk
 
-from estoque_restaurante.app_state import marcar_alteracao
 from dados.restaurante.database import q
 from estoque_restaurante.utils import fmt, TIPOS
 from estoque_restaurante.ui.components import tree
+
 
 rt = None
 per = None
 tipo = None
 por_prod = None
+custo_tipo = None
+aviso = None
 
 
-def rel_gerar():
-    global rt
-
+def periodo_atual():
     formato = {
         "Semana": "%Y-S%W",
         "Mês": "%Y-%m",
         "Ano": "%Y"
     }[per.get()]
 
-    if tipo.get() == "todos":
-        where = ""
-        parametros = [formato]
+    return formato
+
+
+def buscar_periodo_mais_recente(formato, tipo_filtro):
+    if tipo_filtro == "todos":
+        rows = q("""
+            SELECT MAX(strftime(?, s.data_hora)) AS periodo
+            FROM saidas s
+            JOIN itens_saida isd
+                ON isd.saida_id = s.id
+        """, (formato,))
     else:
-        where = "WHERE s.tipo=?"
-        parametros = [formato, tipo.get()]
+        rows = q("""
+            SELECT MAX(strftime(?, s.data_hora)) AS periodo
+            FROM saidas s
+            JOIN itens_saida isd
+                ON isd.saida_id = s.id
+            WHERE s.tipo=?
+        """, (
+            formato,
+            tipo_filtro,
+        ))
+
+    if not rows:
+        return None
+
+    return rows[0]["periodo"]
+
+
+def rel_gerar():
+    global rt, aviso
+
+    formato = periodo_atual()
+    tipo_filtro = tipo.get()
+
+    periodo_mais_recente = buscar_periodo_mais_recente(
+        formato,
+        tipo_filtro
+    )
+
+    if aviso is not None:
+        aviso.config(text="")
 
     rt.delete(*rt.get_children())
+
+    if not periodo_mais_recente:
+        aviso.config(
+            text=(
+                "Não há dados suficientes para gerar o relatório. "
+                "Ainda não existem movimentações registradas."
+            )
+        )
+        return
+
+    if tipo_filtro == "todos":
+        where = "WHERE strftime(?, s.data_hora)=?"
+        parametros = [
+            formato,
+            periodo_mais_recente,
+        ]
+    else:
+        where = """
+            WHERE strftime(?, s.data_hora)=?
+              AND s.tipo=?
+        """
+        parametros = [
+            formato,
+            periodo_mais_recente,
+            tipo_filtro,
+        ]
 
     sql = f"""
         SELECT
@@ -37,25 +99,29 @@ def rel_gerar():
             s.tipo,
             SUM(isd.qtd) AS qtd,
             SUM(
-                isd.qtd * COALESCE(
-                    (
-                        SELECT SUM(valor_total) /
-                               NULLIF(SUM(qtd_estoque), 0)
-                        FROM itens
-                        WHERE produto_id = isd.produto_id
-                    ),
-                    0
+                COALESCE(
+                    isd.subtotal,
+                    isd.qtd * isd.valor_unit
                 )
             ) AS custo
         FROM saidas s
-        JOIN itens_saida isd ON isd.saida_id = s.id
-        JOIN produtos p ON p.id = isd.produto_id
+        JOIN itens_saida isd
+            ON isd.saida_id = s.id
+        JOIN produtos p
+            ON p.id = isd.produto_id
         {where}
         GROUP BY periodo, produto, s.tipo
-        ORDER BY periodo DESC, s.tipo
+        ORDER BY periodo DESC, s.tipo, produto
     """
 
-    for r in q(sql, parametros):
+    parametros_sql = [formato] + parametros
+
+    rows = q(
+        sql,
+        parametros_sql
+    )
+
+    for r in rows:
         rt.insert(
             "",
             "end",
@@ -64,13 +130,28 @@ def rel_gerar():
                 r["produto"],
                 r["tipo"],
                 fmt(round(r["qtd"], 4)),
-                f"{round(r['custo'], 2):.2f}"
+                f"{round(r['custo'] or 0, 2):.2f}"
             )
         )
 
+    periodo_escolhido = {
+        "Semana": "semana",
+        "Mês": "mês",
+        "Ano": "ano"
+    }[per.get()]
+
+    aviso.config(
+        text=(
+            f"Não há dados suficientes para uma análise detalhada "
+            f"do período selecionado. "
+            f"Dados disponíveis para o {periodo_escolhido} "
+            f"{periodo_mais_recente}."
+        )
+    )
+
 
 def criar_aba_relatorios(notebook, root):
-    global rt, per, tipo, por_prod
+    global rt, per, tipo, por_prod, custo_tipo, aviso
 
     aba = ttk.Frame(notebook)
     notebook.add(aba, text="Relatórios")
@@ -91,15 +172,25 @@ def criar_aba_relatorios(notebook, root):
     )
     tipo.set("todos")
 
+    custo_tipo = ttk.Combobox(
+        aba,
+        values=["Custo médio"],
+        state="readonly",
+        width=14
+    )
+    custo_tipo.set("Custo médio")
+
     filtro = ttk.Frame(aba)
-    filtro.pack(fill="x", padx=6, pady=6)
+    filtro.pack(
+        fill="x",
+        padx=6,
+        pady=6
+    )
 
     ttk.Label(
         filtro,
         text="Agrupar por:"
-    ).pack(
-        side="left"
-    )
+    ).pack(side="left")
 
     per.pack(
         in_=filtro,
@@ -110,9 +201,7 @@ def criar_aba_relatorios(notebook, root):
     ttk.Label(
         filtro,
         text="Tipo:"
-    ).pack(
-        side="left"
-    )
+    ).pack(side="left")
 
     tipo.pack(
         in_=filtro,
@@ -120,14 +209,22 @@ def criar_aba_relatorios(notebook, root):
         padx=4
     )
 
-    detalhar = ttk.Checkbutton(
+    ttk.Label(
         filtro,
-        text="Detalhar por produto"
+        text="Custo:"
+    ).pack(side="left")
+
+    custo_tipo.pack(
+        in_=filtro,
+        side="left",
+        padx=4
     )
 
     detalhar_var = tk.IntVar(value=0)
 
-    detalhar.config(
+    detalhar = ttk.Checkbutton(
+        filtro,
+        text="Detalhar por produto",
         variable=detalhar_var
     )
 
@@ -151,6 +248,17 @@ def criar_aba_relatorios(notebook, root):
         padx=6
     )
 
+    aviso = ttk.Label(
+        aba,
+        text="",
+        wraplength=900
+    )
+    aviso.pack(
+        anchor="w",
+        padx=8,
+        pady=(0, 6)
+    )
+
     rt = tree(
         aba,
         [
@@ -164,7 +272,10 @@ def criar_aba_relatorios(notebook, root):
 
     ttk.Label(
         aba,
-        text="Custo estimado = quantidade de saída × custo médio de entrada."
+        text=(
+            "Custo = quantidade da saída × custo médio "
+            "registrado no momento da saída."
+        )
     ).pack(
         anchor="w",
         padx=8

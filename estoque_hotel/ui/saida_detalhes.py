@@ -87,6 +87,91 @@ def selecionar_produto(root):
     return escolhido["id"]
 
 
+# ---------------- CUSTO MÉDIO ---------------- #
+
+def obter_custo_medio(produto_id):
+    """
+    Calcula o custo médio atual do estoque.
+
+    Valor do estoque =
+        valor das entradas
+        - valor das saídas
+
+    Custo médio =
+        valor do estoque / quantidade em estoque
+    """
+
+    dados = q("""
+        SELECT
+            COALESCE(
+                (
+                    SELECT SUM(
+                        qtd_estoque * COALESCE(valor_unit, 0)
+                    )
+                    FROM itens
+                    WHERE produto_id=?
+                ),
+                0
+            ) AS valor_entradas,
+
+            COALESCE(
+                (
+                    SELECT SUM(
+                        qtd * COALESCE(valor_unit, 0)
+                    )
+                    FROM itens_saida
+                    WHERE produto_id=?
+                ),
+                0
+            ) AS valor_saidas,
+
+            COALESCE(
+                (
+                    SELECT SUM(qtd_estoque)
+                    FROM itens
+                    WHERE produto_id=?
+                ),
+                0
+            ) AS qtd_entradas,
+
+            COALESCE(
+                (
+                    SELECT SUM(qtd)
+                    FROM itens_saida
+                    WHERE produto_id=?
+                ),
+                0
+            ) AS qtd_saidas
+    """, (
+        produto_id,
+        produto_id,
+        produto_id,
+        produto_id,
+    ))
+
+    if not dados:
+        return None, 0
+
+    r = dados[0]
+
+    qtd_estoque = (
+        (r["qtd_entradas"] or 0)
+        - (r["qtd_saidas"] or 0)
+    )
+
+    valor_estoque = (
+        (r["valor_entradas"] or 0)
+        - (r["valor_saidas"] or 0)
+    )
+
+    if qtd_estoque <= 0:
+        return None, max(qtd_estoque, 0)
+
+    custo_medio = valor_estoque / qtd_estoque
+
+    return custo_medio, qtd_estoque
+
+
 # ---------------- JANELA PRINCIPAL ---------------- #
 
 def saida_win(root, sid):
@@ -94,7 +179,6 @@ def saida_win(root, sid):
     w.title(f"Saída #{sid}")
     w.geometry("850x560")
 
-    # Cabeçalho
     cab = q(
         "SELECT * FROM saidas WHERE id=?",
         (sid,)
@@ -119,7 +203,6 @@ def saida_win(root, sid):
         text=f"Data: {cab['data_hora']}"
     ).grid(row=0, column=2)
 
-    # Tabela
     tv = tree(
         w,
         [
@@ -146,7 +229,9 @@ def saida_win(root, sid):
             JOIN produtos p
                 ON p.id=i.produto_id
             WHERE saida_id=?
+            ORDER BY i.id
         """, (sid,)):
+
             total += i["subtotal"] or 0
 
             tv.insert(
@@ -175,24 +260,32 @@ def saida_win(root, sid):
             SELECT *
             FROM produtos
             WHERE id=?
-        """, (pid,))[0]
-
-        valor = q("""
-            SELECT valor_unit
-            FROM itens
-            WHERE produto_id=?
-            ORDER BY id DESC
-            LIMIT 1
         """, (pid,))
 
-        if not valor:
-            messagebox.showwarning(
-                "Sem custo",
-                "Esse produto ainda não possui valor de entrada."
+        if not prod:
+            messagebox.showerror(
+                "Erro",
+                "Produto não encontrado."
             )
             return
 
-        valor_unit = valor[0]["valor_unit"]
+        prod = prod[0]
+
+        custo_medio, estoque = obter_custo_medio(pid)
+
+        if estoque <= 0:
+            messagebox.showwarning(
+                "Estoque insuficiente",
+                "Esse produto não possui estoque disponível."
+            )
+            return
+
+        if custo_medio is None:
+            messagebox.showwarning(
+                "Sem custo",
+                "Não foi possível calcular o custo médio deste produto."
+            )
+            return
 
         pop = tk.Toplevel(w)
         pop.title("Quantidade")
@@ -202,12 +295,22 @@ def saida_win(root, sid):
         ttk.Label(
             pop,
             text=f"{prod['codigo']} - {prod['nome']}"
-        ).pack(padx=10, pady=(10, 5))
+        ).pack(
+            padx=10,
+            pady=(10, 5)
+        )
 
         ttk.Label(
             pop,
-            text=f"Valor unitário: R$ {valor_unit:.2f}"
+            text=f"Estoque disponível: {fmt(round(estoque, 4))} {prod['unidade'] or ''}"
         ).pack()
+
+        ttk.Label(
+            pop,
+            text=f"Custo médio: R$ {custo_medio:.2f}"
+        ).pack(
+            pady=(4, 0)
+        )
 
         qtd = tk.StringVar()
 
@@ -219,7 +322,9 @@ def saida_win(root, sid):
 
         def salvar():
             try:
-                qv = float(qtd.get().replace(",", "."))
+                qv = float(
+                    qtd.get().replace(",", ".")
+                )
 
                 if qv <= 0:
                     raise ValueError
@@ -231,7 +336,21 @@ def saida_win(root, sid):
                 )
                 return
 
-            subtotal = round(qv * valor_unit, 2)
+            if qv > estoque:
+                messagebox.showwarning(
+                    "Estoque insuficiente",
+                    (
+                        f"A quantidade informada é maior que o estoque disponível.\n\n"
+                        f"Estoque disponível: {fmt(round(estoque, 4))}\n"
+                        f"Quantidade solicitada: {fmt(qv)}"
+                    )
+                )
+                return
+
+            subtotal = round(
+                qv * custo_medio,
+                2
+            )
 
             run("""
                 INSERT INTO itens_saida(
@@ -246,7 +365,7 @@ def saida_win(root, sid):
                 sid,
                 pid,
                 qv,
-                valor_unit,
+                custo_medio,
                 subtotal,
             ))
 
@@ -274,6 +393,7 @@ def saida_win(root, sid):
                 "DELETE FROM itens_saida WHERE id=?",
                 (iid,)
             )
+
             refresh()
 
     botoes = ttk.Frame(w)
@@ -289,10 +409,17 @@ def saida_win(root, sid):
         botoes,
         text="Excluir item",
         command=excluir_item
-    ).pack(side="left", padx=6)
+    ).pack(
+        side="left",
+        padx=6
+    )
 
     rodape = ttk.Frame(w)
-    rodape.pack(fill="x", padx=10, pady=10)
+    rodape.pack(
+        fill="x",
+        padx=10,
+        pady=10
+    )
 
     ttk.Label(
         rodape,
@@ -304,6 +431,9 @@ def saida_win(root, sid):
         rodape,
         textvariable=total_var,
         font=("Segoe UI", 10, "bold")
-    ).pack(side="left", padx=8)
+    ).pack(
+        side="left",
+        padx=8
+    )
 
     refresh()
