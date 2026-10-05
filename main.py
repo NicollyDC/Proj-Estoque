@@ -1,68 +1,54 @@
-import sys
-import subprocess
 import tkinter as tk
 from tkinter import ttk, messagebox
 
 
-processo_atual = None
-
+# --------------------------------------------------
+# ABRIR SISTEMAS
+# --------------------------------------------------
 
 def abrir_hotel():
-    abrir_sistema("estoque_hotel.main")
+    from estoque_hotel.main import criar_janela_hotel
+
+    root.withdraw()
+
+    janela = criar_janela_hotel(
+        root,
+        ao_fechar=voltar_painel
+    )
+
+    janela.protocol(
+        "WM_DELETE_WINDOW",
+        janela.destroy
+    )
 
 
 def abrir_restaurante():
-    abrir_sistema("estoque_restaurante.main")
+    from estoque_restaurante.main import criar_janela_restaurante
+
+    root.withdraw()
+
+    janela = criar_janela_restaurante(
+        root,
+        ao_fechar=voltar_painel
+    )
+
+    janela.protocol(
+        "WM_DELETE_WINDOW",
+        janela.destroy
+    )
 
 
-def abrir_sistema(modulo):
-    global processo_atual
-
-    try:
-        processo_atual = subprocess.Popen([
-            sys.executable,
-            "-m",
-            modulo
-        ])
-
-        root.withdraw()
-
-        verificar_processo()
-
-    except Exception as e:
-        messagebox.showerror(
-            "Erro",
-            f"Não foi possível abrir o sistema.\n\n{e}"
-        )
-
-
-def verificar_processo():
-    global processo_atual
-
-    if processo_atual is None:
-        return
-
-    if processo_atual.poll() is None:
-        root.after(300, verificar_processo)
-    else:
-        processo_atual = None
-        root.deiconify()
+def voltar_painel():
+    root.deiconify()
 
 
 def fechar():
-    global processo_atual
-
-    if processo_atual is not None:
-        try:
-            if processo_atual.poll() is None:
-                processo_atual.terminate()
-        except Exception:
-            pass
-
     root.destroy()
 
 
-# ---------------- JANELA PRINCIPAL ---------------- #
+# --------------------------------------------------
+# JANELA PRINCIPAL
+# --------------------------------------------------
 
 root = tk.Tk()
 
@@ -70,6 +56,10 @@ root.title("Controle de Estoque")
 root.geometry("500x300")
 root.resizable(False, False)
 
+
+# --------------------------------------------------
+# ESTILO
+# --------------------------------------------------
 
 style = ttk.Style()
 style.theme_use("clam")
@@ -91,7 +81,9 @@ style.configure(
 )
 
 
-# ---------------- TÍTULO ---------------- #
+# --------------------------------------------------
+# TÍTULO
+# --------------------------------------------------
 
 titulo = ttk.Label(
     root,
@@ -111,7 +103,9 @@ subtitulo = ttk.Label(
 subtitulo.pack(pady=(0, 25))
 
 
-# ---------------- BOTÕES ---------------- #
+# --------------------------------------------------
+# BOTÕES
+# --------------------------------------------------
 
 frame = ttk.Frame(root)
 frame.pack()
@@ -147,6 +141,14 @@ btn_restaurante.grid(
 )
 
 
-root.protocol("WM_DELETE_WINDOW", fechar)
+# --------------------------------------------------
+# FECHAR
+# --------------------------------------------------
+
+root.protocol(
+    "WM_DELETE_WINDOW",
+    fechar
+)
+
 
 root.mainloop()
