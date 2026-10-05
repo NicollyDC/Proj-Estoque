@@ -5,38 +5,16 @@ from tkinter import ttk, messagebox
 # --------------------------------------------------
 # ABRIR SISTEMAS
 # --------------------------------------------------
-
 def abrir_hotel():
     from estoque_hotel.main import criar_janela_hotel
-
     root.withdraw()
-
-    janela = criar_janela_hotel(
-        root,
-        ao_fechar=voltar_painel
-    )
-
-    janela.protocol(
-        "WM_DELETE_WINDOW",
-        janela.destroy
-    )
+    criar_janela_hotel(root, ao_fechar=voltar_painel)
 
 
 def abrir_restaurante():
     from estoque_restaurante.main import criar_janela_restaurante
-
     root.withdraw()
-
-    janela = criar_janela_restaurante(
-        root,
-        ao_fechar=voltar_painel
-    )
-
-    janela.protocol(
-        "WM_DELETE_WINDOW",
-        janela.destroy
-    )
-
+    criar_janela_restaurante(root, ao_fechar=voltar_painel)
 
 def voltar_painel():
     root.deiconify()
