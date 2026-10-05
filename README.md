@@ -136,20 +136,6 @@ A importação de NF-e utiliza a chave de acesso de 44 dígitos para consultar o
 
 Cada estabelecimento possui validação própria do destinatário, evitando que notas destinadas a outro estabelecimento sejam importadas para o banco incorreto.
 
-### CNPJs dos estabelecimentos
-
-**Hotel**
-
-```text
-00.810.115/0001-41
-```
-
-**Restaurante**
-
-```text
-62.719.684/0001-33
-```
-
 Os dados dos dois estabelecimentos são mantidos separados.
 
 ## 🖥️ Executável
