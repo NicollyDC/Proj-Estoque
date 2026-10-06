@@ -3,7 +3,7 @@ from tkinter import ttk, messagebox
 
 from dados.restaurante.database import q, run
 from estoque_restaurante.utils import fmt, now
-from estoque_restaurante.ui.components import tree, buttons, sel, safe
+from estoque_restaurante.front import tree, buttons, sel, safe
 from estoque_restaurante.ui.saida_detalhes import saida_win
 
 st = None

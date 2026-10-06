@@ -4,7 +4,7 @@ from tkinter import ttk, messagebox, filedialog, simpledialog
 from estoque_restaurante.app_state import marcar_alteracao
 from dados.restaurante.database import q, run
 from estoque_restaurante.utils import today
-from estoque_restaurante.ui.components import tree, buttons, form, sel, safe
+from estoque_restaurante.front import tree, buttons, form, sel, safe
 from estoque_restaurante.ui.notas_detalhes import nota_win
 from estoque_restaurante.xml_import import ler_xml_nfe, ler_xml_nfe_bytes
 from estoque_restaurante.consulta_nfe import consultar_nfe, validar_chave
@@ -575,7 +575,8 @@ def criar_aba_notas(notebook, root):
 
     ttk.Label(
         barra,
-        text="Buscar nº da nota:"
+        text="Buscar nº da nota:",
+        style="App.TLabel"
     ).pack(
         side="left"
     )
@@ -583,7 +584,8 @@ def criar_aba_notas(notebook, root):
     e = ttk.Entry(
         barra,
         textvariable=busca,
-        width=20
+        width=20,
+        style="App.TEntry"
     )
 
     e.pack(
@@ -594,7 +596,8 @@ def criar_aba_notas(notebook, root):
     ttk.Button(
         barra,
         text="Buscar",
-        command=nota_refresh
+        command=nota_refresh,
+        style="Primario.TButton"
     ).pack(
         side="left"
     )
@@ -605,7 +608,8 @@ def criar_aba_notas(notebook, root):
         command=lambda: (
             busca.set(""),
             nota_refresh()
-        )
+        ),
+        style="Padrao.TButton"
     ).pack(
         side="left",
         padx=3

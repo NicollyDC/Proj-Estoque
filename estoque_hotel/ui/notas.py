@@ -4,14 +4,33 @@ from tkinter import ttk, messagebox, filedialog, simpledialog
 from estoque_hotel.app_state import marcar_alteracao
 from dados.hotel.database import q, run
 from estoque_hotel.utils import today
-from estoque_hotel.ui.components import tree, buttons, form, sel, safe
+
+from estoque_hotel.front import (
+    tree,
+    buttons,
+    form,
+    sel,
+    safe,
+)
+
 from estoque_hotel.ui.notas_detalhes import nota_win
-from estoque_hotel.xml_import import ler_xml_nfe, ler_xml_nfe_bytes
-from estoque_hotel.consulta_nfe import consultar_nfe, validar_chave
+
+from estoque_hotel.xml_import import (
+    ler_xml_nfe,
+    ler_xml_nfe_bytes,
+)
+
+from estoque_hotel.consulta_nfe import (
+    consultar_nfe,
+    validar_chave,
+)
+
 from estoque_hotel.config import CNPJ_ESTABELECIMENTO
 
 
-# ---------------- CAMPOS ---------------- #
+# ============================================================
+# CAMPOS
+# ============================================================
 
 NOTA_F = [
     ("numero", "Nº da nota", "entry", None),
@@ -22,15 +41,20 @@ NOTA_F = [
 ]
 
 
+# ============================================================
+# ESTADO DA ABA
+# ============================================================
+
 nt = None
 busca = None
 root_ref = None
 
 
-# ---------------- UTILIDADES ---------------- #
+# ============================================================
+# UTILIDADES
+# ============================================================
 
 def nota_vals(r):
-
     df = (
         (r["data_fat"].strip() or today())
         if r["faturada"]
@@ -50,7 +74,6 @@ def normalizar_cnpj(cnpj):
     """
     Remove máscara e deixa somente números.
     """
-
     if not cnpj:
         return ""
 
@@ -95,6 +118,10 @@ def validar_destinatario(nota):
         )
 
 
+# ============================================================
+# IMPORTAÇÃO DA NF-E
+# ============================================================
+
 def salvar_nota_importada(nota, itens):
     """
     Salva uma NF-e e todos os seus itens no banco.
@@ -107,7 +134,9 @@ def salvar_nota_importada(nota, itens):
         nota.get("chave") or ""
     ).strip()
 
-    # ---------------- DUPLICIDADE ---------------- #
+    # --------------------------------------------------------
+    # DUPLICIDADE
+    # --------------------------------------------------------
 
     if chave:
 
@@ -128,7 +157,9 @@ def salvar_nota_importada(nota, itens):
                 f"Chave: {chave}"
             )
 
-    # ---------------- CABEÇALHO ---------------- #
+    # --------------------------------------------------------
+    # CABEÇALHO
+    # --------------------------------------------------------
 
     cur = run(
         """
@@ -152,7 +183,9 @@ def salvar_nota_importada(nota, itens):
 
     ok = 0
 
-    # ---------------- ITENS ---------------- #
+    # --------------------------------------------------------
+    # ITENS
+    # --------------------------------------------------------
 
     for item in itens:
 
@@ -171,7 +204,7 @@ def salvar_nota_importada(nota, itens):
             """,
             (
                 nota["fornecedor"],
-                cod
+                cod,
             )
         )
 
@@ -187,11 +220,15 @@ def salvar_nota_importada(nota, itens):
             pid = None
             fator = 1
 
-        # ---------------- CONVERSÃO ---------------- #
+        # ----------------------------------------------------
+        # CONVERSÃO
+        # ----------------------------------------------------
 
         qtd_estoque = qtd * fator
 
-        # ---------------- VALOR UNITÁRIO ---------------- #
+        # ----------------------------------------------------
+        # VALOR UNITÁRIO
+        # ----------------------------------------------------
 
         valor_unit = (
             round(
@@ -235,7 +272,9 @@ def salvar_nota_importada(nota, itens):
     return nid, len(itens), ok
 
 
-# ---------------- REFRESH ---------------- #
+# ============================================================
+# REFRESH
+# ============================================================
 
 def nota_refresh():
 
@@ -249,6 +288,7 @@ def nota_refresh():
     for r in q(
         """
         SELECT n.*,
+
         (SELECT COUNT(*)
          FROM itens
          WHERE nota_id=n.id) AS qi,
@@ -291,7 +331,9 @@ def nota_refresh():
         )
 
 
-# ---------------- CRUD ---------------- #
+# ============================================================
+# CRUD
+# ============================================================
 
 @safe
 def nota_nova():
@@ -363,7 +405,9 @@ def nota_excluir():
         marcar_alteracao()
 
 
-# ---------------- IMPORTAÇÃO XML ---------------- #
+# ============================================================
+# IMPORTAÇÃO XML
+# ============================================================
 
 @safe
 def nota_importar_xml():
@@ -420,7 +464,9 @@ def nota_importar_xml():
     )
 
 
-# ---------------- CONSULTA PELA CHAVE ---------------- #
+# ============================================================
+# CONSULTA PELA CHAVE
+# ============================================================
 
 @safe
 def nota_consultar_chave():
@@ -450,7 +496,9 @@ def nota_consultar_chave():
 
         return
 
-    # ---------------- VERIFICA DUPLICIDADE ANTES DA API ---------------- #
+    # --------------------------------------------------------
+    # DUPLICIDADE ANTES DA API
+    # --------------------------------------------------------
 
     existente = q(
         """
@@ -473,18 +521,26 @@ def nota_consultar_chave():
 
     try:
 
-        # Consulta a API
+        # ----------------------------------------------------
+        # CONSULTA A API
+        # ----------------------------------------------------
+
         xml_bytes = consultar_nfe(
             chave
         )
 
-        # Interpreta o XML diretamente em memória
+        # ----------------------------------------------------
+        # INTERPRETA O XML EM MEMÓRIA
+        # ----------------------------------------------------
+
         nota, itens = ler_xml_nfe_bytes(
             xml_bytes
         )
 
-        # Garante que o XML retornado corresponde
-        # exatamente à chave solicitada
+        # ----------------------------------------------------
+        # CONFERE A CHAVE RETORNADA
+        # ----------------------------------------------------
+
         chave_xml = (
             nota.get("chave") or ""
         ).strip()
@@ -496,12 +552,18 @@ def nota_consultar_chave():
                 "não corresponde à chave informada."
             )
 
-        # Confere se a NF-e pertence ao Hotel
+        # ----------------------------------------------------
+        # CONFERE DESTINATÁRIO
+        # ----------------------------------------------------
+
         validar_destinatario(
             nota
         )
 
-        # Salva a nota e seus itens
+        # ----------------------------------------------------
+        # SALVA A NOTA
+        # ----------------------------------------------------
+
         nid, total, ok = salvar_nota_importada(
             nota,
             itens
@@ -537,7 +599,9 @@ def nota_consultar_chave():
     )
 
 
-# ---------------- ABA ---------------- #
+# ============================================================
+# ABA
+# ============================================================
 
 def criar_aba_notas(notebook, root):
 
@@ -553,6 +617,10 @@ def criar_aba_notas(notebook, root):
         aba,
         text="Notas"
     )
+
+    # --------------------------------------------------------
+    # BUSCA
+    # --------------------------------------------------------
 
     busca = tk.StringVar()
 
@@ -609,6 +677,10 @@ def criar_aba_notas(notebook, root):
         lambda ev: nota_refresh()
     )
 
+    # --------------------------------------------------------
+    # TABELA
+    # --------------------------------------------------------
+
     nt = tree(
         aba,
         [
@@ -620,6 +692,10 @@ def criar_aba_notas(notebook, root):
             ("sem", "Sem vínculo", 90),
         ]
     )
+
+    # --------------------------------------------------------
+    # BOTÕES
+    # --------------------------------------------------------
 
     buttons(
         aba,

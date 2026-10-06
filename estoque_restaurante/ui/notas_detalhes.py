@@ -3,7 +3,7 @@ from tkinter import ttk, messagebox
 
 from dados.restaurante.database import q, run
 from estoque_restaurante.utils import today, fmt, num
-from estoque_restaurante.ui.components import tree, buttons, form, sel, safe
+from estoque_restaurante.front import tree, buttons, form, sel, safe
 
 
 ITEM_HELP = "Qtd. no estoque (vazio = qtd × fator)"

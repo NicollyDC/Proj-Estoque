@@ -3,7 +3,7 @@ from tkinter import ttk
 
 from dados.restaurante.database import q, run
 from estoque_restaurante.utils import ESTOQUE_SQL, fmt, num, FIN
-from estoque_restaurante.ui.components import tree, buttons, form, sel, safe
+from estoque_restaurante.front import tree, buttons, form, sel, safe
 
 
 # Campos do formulário
@@ -211,7 +211,8 @@ def criar_aba_produtos(notebook, root):
 
     ttk.Label(
         busca_frame,
-        text="Pesquisar:"
+        text="Pesquisar:",
+        style="App.TLabel"
     ).pack(
         side="left",
         padx=(0, 6)
@@ -222,7 +223,8 @@ def criar_aba_produtos(notebook, root):
     ttk.Entry(
         busca_frame,
         textvariable=busca_produto,
-        width=40
+        width=40,
+        style="App.TEntry"
     ).pack(
         side="left"
     )
@@ -230,7 +232,8 @@ def criar_aba_produtos(notebook, root):
     ttk.Button(
         busca_frame,
         text="Limpar",
-        command=lambda: busca_produto.set("")
+        command=lambda: busca_produto.set(""),
+        style="Padrao.TButton"
     ).pack(
         side="left",
         padx=6

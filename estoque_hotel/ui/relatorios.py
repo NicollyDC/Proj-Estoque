@@ -10,8 +10,26 @@ import webbrowser
 from pathlib import Path
 
 from dados.hotel.database import q
-from estoque_hotel.utils import fmt, TIPOS
-from estoque_hotel.ui.components import tree
+from estoque_hotel.utils import TIPOS
+from estoque_hotel.front import (tree ,BRANCO,TEXTO,BORDA)
+
+
+# ============================================================
+# PALETA VISUAL
+# ============================================================
+
+COR_FUNDO_CABECALHO = "#eef4ff"
+COR_TITULO = "#1e3a8a"
+COR_SUBTITULO = "#64748b"
+
+COR_CARD_COMPRAS = "#e0f2fe"
+COR_CARD_SAIDAS = "#fde8e8"
+COR_CARD_DIFERENCA = "#e6f6ea"
+
+COR_LINHA_POSITIVO = "#eaf7ee"
+COR_LINHA_ALERTA = "#fdecec"
+COR_LINHA_VAZIA = "#f3f4f6"
+COR_LINHA_NEUTRA = "#ffffff"
 
 
 # ============================================================
@@ -19,16 +37,12 @@ from estoque_hotel.ui.components import tree
 # ============================================================
 
 rt = None
-
 per = None
 tipo = None
-
 data_de = None
 data_ate = None
-
 por_prod = None
 aviso = None
-
 root_ref = None
 
 resumo_compras = None
@@ -50,7 +64,6 @@ def data_valida(txt):
             txt.strip(),
             "%Y-%m-%d"
         ).date()
-
     except (ValueError, AttributeError):
         return None
 
@@ -65,14 +78,7 @@ def formatar_data_br(txt):
 
 
 def dinheiro(valor):
-    """
-    Formata valores no padrão brasileiro.
-    Exemplo:
-        1889.70 -> R$ 1.889,70
-    """
-
     valor = valor or 0
-
     texto = f"{valor:,.2f}"
 
     return (
@@ -85,12 +91,7 @@ def dinheiro(valor):
 
 
 def numero_br(valor):
-    """
-    Formata número no padrão brasileiro.
-    """
-
     valor = valor or 0
-
     texto = f"{valor:,.4f}"
 
     texto = (
@@ -100,45 +101,23 @@ def numero_br(valor):
         .replace("X", ".")
     )
 
-    texto = texto.rstrip("0").rstrip(",")
-
-    return texto
+    return texto.rstrip("0").rstrip(",")
 
 
 def primeiro_dia_mes(data):
-    return date(
-        data.year,
-        data.month,
-        1
-    )
+    return date(data.year, data.month, 1)
 
 
 def ultimo_dia_mes(data):
-    ultimo = monthrange(
-        data.year,
-        data.month
-    )[1]
-
-    return date(
-        data.year,
-        data.month,
-        ultimo
-    )
+    ultimo = monthrange(data.year, data.month)[1]
+    return date(data.year, data.month, ultimo)
 
 
 def voltar_mes(data):
     if data.month == 1:
-        return date(
-            data.year - 1,
-            12,
-            1
-        )
+        return date(data.year - 1, 12, 1)
 
-    return date(
-        data.year,
-        data.month - 1,
-        1
-    )
+    return date(data.year, data.month - 1, 1)
 
 
 # ============================================================
@@ -146,37 +125,20 @@ def voltar_mes(data):
 # ============================================================
 
 def gerar_periodos():
-
     atual = hoje()
-
     modo = per.get()
-
     periodos = []
 
-    # ========================================================
-    # DIA
-    # ========================================================
-
     if modo == "Dia":
+        inicio = data_valida(data_de.get())
+        fim = data_valida(data_ate.get())
 
-        inicio = data_valida(
-            data_de.get()
-        )
-
-        fim = data_valida(
-            data_ate.get()
-        )
-
-        if not inicio or not fim:
-            return []
-
-        if inicio > fim:
+        if not inicio or not fim or inicio > fim:
             return []
 
         data = inicio
 
         while data <= fim:
-
             periodos.append({
                 "chave": data.strftime("%Y-%m-%d"),
                 "inicio": data,
@@ -188,16 +150,10 @@ def gerar_periodos():
 
         return periodos
 
-    # ========================================================
-    # MÊS
-    # ========================================================
-
     if modo == "Mês":
-
         data = primeiro_dia_mes(atual)
 
         for _ in range(24):
-
             periodos.append({
                 "chave": data.strftime("%Y-%m"),
                 "inicio": primeiro_dia_mes(data),
@@ -209,14 +165,8 @@ def gerar_periodos():
 
         return periodos
 
-    # ========================================================
-    # ANO
-    # ========================================================
-
     if modo == "Ano":
-
         for i in range(10):
-
             ano = atual.year - i
 
             periodos.append({
@@ -236,7 +186,6 @@ def gerar_periodos():
 # ============================================================
 
 def tipo_valido():
-
     valor = tipo.get()
 
     if valor == "todos":
@@ -246,11 +195,10 @@ def tipo_valido():
 
 
 # ============================================================
-# BUSCA DE COMPRAS
+# CONSULTAS DE COMPRAS
 # ============================================================
 
 def buscar_compras(inicio, fim):
-
     rows = q("""
         SELECT
             COALESCE(SUM(i.valor_total), 0) AS total
@@ -271,21 +219,14 @@ def buscar_compras(inicio, fim):
 
 
 # ============================================================
-# BUSCA DE SAÍDAS
+# CONSULTAS DE SAÍDAS
 # ============================================================
 
 def buscar_saidas(inicio, fim, tipo_filtro):
-
-    inicio_txt = inicio.strftime(
-        "%Y-%m-%d"
-    )
-
-    fim_txt = fim.strftime(
-        "%Y-%m-%d"
-    )
+    inicio_txt = inicio.strftime("%Y-%m-%d")
+    fim_txt = fim.strftime("%Y-%m-%d")
 
     if tipo_filtro is None:
-
         rows = q("""
             SELECT
                 COALESCE(SUM(isd.subtotal), 0) AS total
@@ -298,9 +239,7 @@ def buscar_saidas(inicio, fim, tipo_filtro):
             inicio_txt,
             fim_txt,
         ))
-
     else:
-
         rows = q("""
             SELECT
                 COALESCE(SUM(isd.subtotal), 0) AS total
@@ -327,18 +266,8 @@ def buscar_saidas(inicio, fim, tipo_filtro):
 # ============================================================
 
 def buscar_detalhes(inicio, fim, tipo_filtro):
-
-    inicio_txt = inicio.strftime(
-        "%Y-%m-%d"
-    )
-
-    fim_txt = fim.strftime(
-        "%Y-%m-%d"
-    )
-
-    # ========================================================
-    # COMPRAS
-    # ========================================================
+    inicio_txt = inicio.strftime("%Y-%m-%d")
+    fim_txt = fim.strftime("%Y-%m-%d")
 
     compras = q("""
         SELECT
@@ -358,12 +287,7 @@ def buscar_detalhes(inicio, fim, tipo_filtro):
         fim_txt,
     ))
 
-    # ========================================================
-    # SAÍDAS
-    # ========================================================
-
     if tipo_filtro is None:
-
         saidas = q("""
             SELECT
                 date(s.data_hora) AS data,
@@ -386,9 +310,7 @@ def buscar_detalhes(inicio, fim, tipo_filtro):
             inicio_txt,
             fim_txt,
         ))
-
     else:
-
         saidas = q("""
             SELECT
                 date(s.data_hora) AS data,
@@ -417,7 +339,6 @@ def buscar_detalhes(inicio, fim, tipo_filtro):
     detalhes = []
 
     for r in compras:
-
         detalhes.append({
             "data": r["data"],
             "produto": r["produto"] or "Produto não identificado",
@@ -428,7 +349,6 @@ def buscar_detalhes(inicio, fim, tipo_filtro):
         })
 
     for r in saidas:
-
         detalhes.append({
             "data": r["data"],
             "produto": r["produto"] or "Produto não identificado",
@@ -450,11 +370,10 @@ def buscar_detalhes(inicio, fim, tipo_filtro):
 
 
 # ============================================================
-# SITUAÇÃO
+# SITUAÇÃO E CORES
 # ============================================================
 
 def situacao(compras, saidas):
-
     compras = compras or 0
     saidas = saidas or 0
 
@@ -476,46 +395,59 @@ def situacao(compras, saidas):
     return "Compras e saídas equilibradas"
 
 
+def tag_da_linha(compras, saidas):
+    if not compras and not saidas:
+        return "vazia"
+
+    if saidas > compras:
+        return "alerta"
+
+    if compras > saidas:
+        return "positivo"
+
+    return "neutra"
+
+
+def icone_situacao(texto):
+    icones = {
+        "Sem movimentação": "⚪",
+        "Somente compra": "🟢",
+        "Somente saída": "🔴",
+        "Saídas maiores que compras": "🔴",
+        "Compras maiores que saídas": "🟢",
+        "Compras e saídas equilibradas": "🟡",
+    }
+
+    return f"{icones.get(texto, '')} {texto}"
+
+
 # ============================================================
 # ATUALIZAÇÃO DA TABELA
 # ============================================================
 
 def atualizar_relatorio(*_):
-
     global rt, aviso
 
     if rt is None:
         return
 
-    rt.delete(
-        *rt.get_children()
-    )
+    rt.delete(*rt.get_children())
 
     periodos = gerar_periodos()
 
     if not periodos:
-
         aviso.config(
-            text=(
-                "Informe um intervalo de datas válido."
-            )
+            text="⚠️ Informe datas válidas no formato AAAA-MM-DD e confira se a data inicial não é posterior à final."
         )
 
         atualizar_resumo(0, 0)
-
         return
 
     tipo_filtro = tipo_valido()
-
     total_compras = 0
     total_saidas = 0
 
-    quantidade_periodos = len(
-        periodos
-    )
-
     for periodo in periodos:
-
         compras = buscar_compras(
             periodo["inicio"],
             periodo["fim"]
@@ -528,11 +460,7 @@ def atualizar_relatorio(*_):
         )
 
         diferenca = compras - saidas
-
-        situacao_txt = situacao(
-            compras,
-            saidas
-        )
+        situacao_txt = situacao(compras, saidas)
 
         total_compras += compras
         total_saidas += saidas
@@ -545,21 +473,19 @@ def atualizar_relatorio(*_):
                 dinheiro(compras),
                 dinheiro(saidas),
                 dinheiro(diferenca),
-                situacao_txt,
-            )
+                icone_situacao(situacao_txt),
+            ),
+            tags=(tag_da_linha(compras, saidas),)
         )
 
     aviso.config(
         text=(
-            f"{quantidade_periodos} período(s) analisado(s). "
+            f"ℹ️ {len(periodos)} período(s) analisado(s). "
             "Períodos sem movimentação também são exibidos."
         )
     )
 
-    atualizar_resumo(
-        total_compras,
-        total_saidas
-    )
+    atualizar_resumo(total_compras, total_saidas)
 
 
 # ============================================================
@@ -567,143 +493,129 @@ def atualizar_relatorio(*_):
 # ============================================================
 
 def atualizar_resumo(compras, saidas):
-
     if resumo_compras is None:
         return
 
     diferenca = compras - saidas
 
-    resumo_compras.config(
-        text=dinheiro(compras)
+    resumo_compras.config(text=dinheiro(compras))
+    resumo_saidas.config(text=dinheiro(saidas))
+    resumo_diferenca.config(text=dinheiro(diferenca))
+
+
+def criar_card_resumo(pai, titulo, cor):
+    card = tk.Frame(
+        pai,
+        bg=cor,
+        padx=16,
+        pady=10,
+        highlightthickness=1,
+        highlightbackground="#d1d5db"
     )
 
-    resumo_saidas.config(
-        text=dinheiro(saidas)
+    tk.Label(
+        card,
+        text=titulo,
+        bg=cor,
+        fg=COR_SUBTITULO,
+        font=("Segoe UI", 9)
+    ).pack(anchor="w")
+
+    valor = tk.Label(
+        card,
+        text="R$ 0,00",
+        bg=cor,
+        fg="#1f2937",
+        font=("Segoe UI", 15, "bold")
     )
 
-    resumo_diferenca.config(
-        text=dinheiro(diferenca)
-    )
+    valor.pack(anchor="w")
+
+    return card, valor
 
 
 # ============================================================
-# CONTROLE DOS CAMPOS DE DATA
+# CAMPOS DE DATA
 # ============================================================
 
 def atualizar_campos_data(*_):
-
     modo = per.get()
 
-    if modo == "Dia":
+    estado = "normal" if modo == "Dia" else "disabled"
 
-        data_de.config(
-            state="normal"
-        )
-
-        data_ate.config(
-            state="normal"
-        )
-
-    else:
-
-        data_de.config(
-            state="disabled"
-        )
-
-        data_ate.config(
-            state="disabled"
-        )
+    data_de.config(state=estado)
+    data_ate.config(state=estado)
 
     atualizar_relatorio()
 
 
 # ============================================================
-# MONTAGEM DO TEXTO DE VISUALIZAÇÃO
+# AJUDA
+# ============================================================
+
+def mostrar_ajuda():
+    messagebox.showinfo(
+        "Como usar os relatórios",
+        (
+            "📊 RELATÓRIOS DO HOTEL\n\n"
+            "1. Escolha o agrupamento:\n"
+            "   • Dia: informe as datas inicial e final.\n"
+            "   • Mês: analisa os últimos 24 meses.\n"
+            "   • Ano: analisa os últimos 10 anos.\n\n"
+            "2. Selecione um tipo de saída ou mantenha 'todos'.\n\n"
+            "3. Marque 'Detalhar por produto' para incluir os itens "
+            "no relatório impresso.\n\n"
+            "4. Clique em 'Gerar relatório' para visualizar e imprimir.\n\n"
+            "Cores da tabela:\n"
+            "🟢 Compras maiores que saídas.\n"
+            "🔴 Saídas maiores que compras.\n"
+            "⚪ Sem movimentação."
+        ),
+        parent=root_ref
+    )
+
+
+# ============================================================
+# TEXTO DO RELATÓRIO
 # ============================================================
 
 def montar_texto_relatorio():
-
     periodos = gerar_periodos()
 
     if not periodos:
         return "", []
 
     tipo_filtro = tipo_valido()
-
     linhas = []
 
     total_compras = 0
     total_saidas = 0
 
-    # ========================================================
-    # CABEÇALHO
-    # ========================================================
-
-    linhas.append(
-        "RELATÓRIO DE MOVIMENTAÇÃO DE ESTOQUE"
-    )
-
-    linhas.append(
-        "HOTEL"
-    )
-
-    linhas.append("")
-
-    linhas.append(
-        f"Período: {per.get()}"
-    )
+    linhas.extend([
+        "RELATÓRIO DE MOVIMENTAÇÃO DE ESTOQUE",
+        "HOTEL",
+        "",
+        f"Período: {per.get()}",
+    ])
 
     if per.get() == "Dia":
-
-        linhas.append(
-            f"De: {formatar_data_br(data_de.get())}"
-        )
-
-        linhas.append(
-            f"Até: {formatar_data_br(data_ate.get())}"
-        )
-
+        linhas.append(f"De: {formatar_data_br(data_de.get())}")
+        linhas.append(f"Até: {formatar_data_br(data_ate.get())}")
     elif per.get() == "Mês":
-
-        linhas.append(
-            "Intervalo: últimos 24 meses"
-        )
-
+        linhas.append("Intervalo: últimos 24 meses")
     else:
+        linhas.append("Intervalo: últimos 10 anos")
 
-        linhas.append(
-            "Intervalo: últimos 10 anos"
-        )
-
-    linhas.append(
-        f"Tipo de saída: {tipo.get()}"
-    )
-
-    linhas.append("")
-
-    linhas.append("=" * 100)
-
-    linhas.append(
-        f"{'PERÍODO':<18}"
-        f"{'COMPRAS':>18}"
-        f"{'SAÍDAS':>18}"
-        f"{'DIFERENÇA':>18}"
-        f"  SITUAÇÃO"
-    )
-
-    linhas.append("-" * 100)
-
-    # ========================================================
-    # PERÍODOS
-    # ========================================================
+    linhas.extend([
+        f"Tipo de saída: {tipo.get()}",
+        "",
+        "=" * 100,
+        f"{'PERÍODO':<18}{'COMPRAS':>18}{'SAÍDAS':>18}{'DIFERENÇA':>18}  SITUAÇÃO",
+        "-" * 100,
+    ])
 
     for periodo in periodos:
-
-        compras = buscar_compras(
-            periodo["inicio"],
-            periodo["fim"]
-        )
-
+        compras = buscar_compras(periodo["inicio"], periodo["fim"])
         saidas = buscar_saidas(
             periodo["inicio"],
             periodo["fim"],
@@ -723,74 +635,44 @@ def montar_texto_relatorio():
             f"  {situacao(compras, saidas)}"
         )
 
-    # ========================================================
-    # TOTAL
-    # ========================================================
+    total_diferenca = total_compras - total_saidas
 
-    total_diferenca = (
-        total_compras - total_saidas
-    )
-
-    linhas.append("-" * 100)
-
-    linhas.append(
+    linhas.extend([
+        "-" * 100,
         f"{'TOTAL':<18}"
         f"{dinheiro(total_compras):>18}"
         f"{dinheiro(total_saidas):>18}"
-        f"{dinheiro(total_diferenca):>18}"
-    )
-
-    # ========================================================
-    # DETALHAMENTO
-    # ========================================================
+        f"{dinheiro(total_diferenca):>18}",
+    ])
 
     detalhes = []
 
     if por_prod.get():
-
         for periodo in periodos:
-
             dados = buscar_detalhes(
                 periodo["inicio"],
                 periodo["fim"],
                 tipo_filtro
             )
 
-            if not dados:
-                continue
-
             detalhes.extend(
                 [
-                    (
-                        periodo["exibicao"],
-                        item
-                    )
+                    (periodo["exibicao"], item)
                     for item in dados
                 ]
             )
 
         if detalhes:
-
-            linhas.append("")
-            linhas.append("")
-            linhas.append(
-                "DETALHAMENTO POR PRODUTO"
-            )
-
-            linhas.append("=" * 100)
-
-            linhas.append(
-                f"{'PERÍODO':<14}"
-                f"{'TIPO':<20}"
-                f"{'PRODUTO':<35}"
-                f"{'QUANTIDADE':>12}"
-                f"{'VALOR':>15}"
-            )
-
-            linhas.append("-" * 100)
+            linhas.extend([
+                "",
+                "",
+                "DETALHAMENTO POR PRODUTO",
+                "=" * 100,
+                f"{'PERÍODO':<14}{'TIPO':<20}{'PRODUTO':<35}{'QUANTIDADE':>12}{'VALOR':>15}",
+                "-" * 100,
+            ])
 
             for periodo_txt, item in detalhes:
-
                 linhas.append(
                     f"{periodo_txt:<14}"
                     f"{item['tipo']:<20}"
@@ -807,19 +689,12 @@ def montar_texto_relatorio():
 # ============================================================
 
 def gerar_html_relatorio(periodos, tipo_filtro, detalhes):
-
     linhas_html = []
-
     total_compras = 0
     total_saidas = 0
 
     for periodo in periodos:
-
-        compras = buscar_compras(
-            periodo["inicio"],
-            periodo["fim"]
-        )
-
+        compras = buscar_compras(periodo["inicio"], periodo["fim"])
         saidas = buscar_saidas(
             periodo["inicio"],
             periodo["fim"],
@@ -827,28 +702,21 @@ def gerar_html_relatorio(periodos, tipo_filtro, detalhes):
         )
 
         diferenca = compras - saidas
-
         total_compras += compras
         total_saidas += saidas
 
-        situacao_txt = situacao(
-            compras,
-            saidas
-        )
-
-        classe = ""
+        situacao_txt = situacao(compras, saidas)
 
         if situacao_txt == "Sem movimentação":
             classe = "sem-movimentacao"
-
         elif saidas > compras:
             classe = "alerta"
-
         elif compras > saidas:
             classe = "positivo"
+        else:
+            classe = ""
 
-        linhas_html.append(
-            f"""
+        linhas_html.append(f"""
             <tr class="{classe}">
                 <td>{html.escape(periodo['exibicao'])}</td>
                 <td class="numero">{dinheiro(compras)}</td>
@@ -856,50 +724,28 @@ def gerar_html_relatorio(periodos, tipo_filtro, detalhes):
                 <td class="numero">{dinheiro(diferenca)}</td>
                 <td>{html.escape(situacao_txt)}</td>
             </tr>
-            """
-        )
+        """)
 
-    total_diferenca = (
-        total_compras - total_saidas
-    )
-
-    # ========================================================
-    # INFORMAÇÕES DO PERÍODO
-    # ========================================================
+    total_diferenca = total_compras - total_saidas
 
     if per.get() == "Dia":
-
         intervalo = (
-            f"{formatar_data_br(data_de.get())} "
-            f"até "
+            f"{formatar_data_br(data_de.get())} até "
             f"{formatar_data_br(data_ate.get())}"
         )
-
     elif per.get() == "Mês":
-
         intervalo = "Últimos 24 meses"
-
     else:
-
         intervalo = "Últimos 10 anos"
-
-    # ========================================================
-    # DOCUMENTO
-    # ========================================================
 
     html_texto = f"""
 <!DOCTYPE html>
-
 <html lang="pt-BR">
-
 <head>
-
 <meta charset="UTF-8">
-
-<title>Relatório de Movimentação de Estoque</title>
+<title>Relatório de Movimentação de Estoque - Hotel</title>
 
 <style>
-
 @page {{
     size: A4 landscape;
     margin: 12mm;
@@ -936,7 +782,7 @@ body {{
     color: #6b7280;
 }}
 
-.informacoes {{
+.informacoes, .resumo {{
     display: table;
     width: 100%;
     margin-bottom: 18px;
@@ -961,12 +807,6 @@ body {{
 .info-valor {{
     font-size: 12px;
     font-weight: bold;
-}}
-
-.resumo {{
-    display: table;
-    width: 100%;
-    margin-bottom: 18px;
 }}
 
 .resumo-card {{
@@ -996,7 +836,7 @@ body {{
     font-size: 14px;
     font-weight: bold;
     color: #17365d;
-    margin: 18px 0 8px 0;
+    margin: 18px 0 8px;
 }}
 
 table {{
@@ -1078,269 +918,120 @@ tr.positivo {{
         box-shadow: 0 0 15px rgba(0,0,0,.12);
     }}
 }}
-
 </style>
-
 </head>
 
 <body>
-
 <div class="cabecalho">
-
-    <div class="titulo">
-        RELATÓRIO DE MOVIMENTAÇÃO DE ESTOQUE
-    </div>
-
-    <div class="subtitulo">
-        Controle de Estoque - Hotel
-    </div>
-
+    <div class="titulo">RELATÓRIO DE MOVIMENTAÇÃO DE ESTOQUE</div>
+    <div class="subtitulo">Controle de Estoque - Hotel</div>
 </div>
 
-
 <div class="informacoes">
-
     <div class="info-card">
-
-        <span class="info-label">
-            Agrupamento
-        </span>
-
-        <span class="info-valor">
-            {html.escape(per.get())}
-        </span>
-
+        <span class="info-label">Agrupamento</span>
+        <span class="info-valor">{html.escape(per.get())}</span>
     </div>
-
     <div class="info-card">
-
-        <span class="info-label">
-            Intervalo
-        </span>
-
-        <span class="info-valor">
-            {html.escape(intervalo)}
-        </span>
-
+        <span class="info-label">Intervalo</span>
+        <span class="info-valor">{html.escape(intervalo)}</span>
     </div>
-
     <div class="info-card">
-
-        <span class="info-label">
-            Tipo de saída
-        </span>
-
-        <span class="info-valor">
-            {html.escape(tipo.get())}
-        </span>
-
+        <span class="info-label">Tipo de saída</span>
+        <span class="info-valor">{html.escape(tipo.get())}</span>
     </div>
-
     <div class="info-card">
-
-        <span class="info-label">
-            Detalhamento
-        </span>
-
+        <span class="info-label">Detalhamento</span>
         <span class="info-valor">
             {"Por produto" if por_prod.get() else "Resumo"}
         </span>
-
     </div>
-
 </div>
-
 
 <div class="resumo">
-
     <div class="resumo-card">
-
-        <div class="resumo-titulo">
-            Total de compras
-        </div>
-
-        <div class="resumo-valor">
-            {dinheiro(total_compras)}
-        </div>
-
+        <div class="resumo-titulo">Total de compras</div>
+        <div class="resumo-valor">{dinheiro(total_compras)}</div>
     </div>
-
-
     <div class="resumo-card">
-
-        <div class="resumo-titulo">
-            Total de saídas / consumo
-        </div>
-
-        <div class="resumo-valor">
-            {dinheiro(total_saidas)}
-        </div>
-
+        <div class="resumo-titulo">Total de saídas / consumo</div>
+        <div class="resumo-valor">{dinheiro(total_saidas)}</div>
     </div>
-
-
     <div class="resumo-card">
-
-        <div class="resumo-titulo">
-            Diferença
-        </div>
-
-        <div class="resumo-valor">
-            {dinheiro(total_diferenca)}
-        </div>
-
+        <div class="resumo-titulo">Diferença</div>
+        <div class="resumo-valor">{dinheiro(total_diferenca)}</div>
     </div>
-
 </div>
 
-
-<div class="secao">
-    Movimentação por período
-</div>
-
+<div class="secao">Movimentação por período</div>
 
 <table>
-
 <thead>
-
 <tr>
-
     <th>Período</th>
     <th>Compras</th>
     <th>Saídas / Consumo</th>
     <th>Diferença</th>
     <th>Situação</th>
-
 </tr>
-
 </thead>
-
 <tbody>
-
 {''.join(linhas_html)}
-
 <tr class="total">
-
     <td>TOTAL</td>
-
-    <td class="numero">
-        {dinheiro(total_compras)}
-    </td>
-
-    <td class="numero">
-        {dinheiro(total_saidas)}
-    </td>
-
-    <td class="numero">
-        {dinheiro(total_diferenca)}
-    </td>
-
-    <td>
-        {html.escape(
-            situacao(
-                total_compras,
-                total_saidas
-            )
-        )}
-    </td>
-
+    <td class="numero">{dinheiro(total_compras)}</td>
+    <td class="numero">{dinheiro(total_saidas)}</td>
+    <td class="numero">{dinheiro(total_diferenca)}</td>
+    <td>{html.escape(situacao(total_compras, total_saidas))}</td>
 </tr>
-
 </tbody>
-
 </table>
 """
 
-    # ========================================================
-    # DETALHAMENTO
-    # ========================================================
-
     if detalhes:
-
         html_texto += """
 <div class="detalhes">
-
-<div class="secao">
-    Detalhamento por produto
-</div>
-
+<div class="secao">Detalhamento por produto</div>
 <table>
-
 <thead>
-
 <tr>
-
     <th>Período</th>
     <th>Tipo</th>
     <th>Produto</th>
     <th>Origem / Fornecedor</th>
     <th>Quantidade</th>
     <th>Valor</th>
-
 </tr>
-
 </thead>
-
 <tbody>
 """
 
         for periodo_txt, item in detalhes:
-
             html_texto += f"""
 <tr>
-
-    <td>
-        {html.escape(periodo_txt)}
-    </td>
-
-    <td>
-        {html.escape(item['tipo'])}
-    </td>
-
-    <td>
-        {html.escape(item['produto'])}
-    </td>
-
-    <td>
-        {html.escape(item['origem'])}
-    </td>
-
-    <td class="numero">
-        {html.escape(
-            numero_br(item['quantidade'])
-        )}
-    </td>
-
-    <td class="numero">
-        {dinheiro(item['valor'])}
-    </td>
-
+    <td>{html.escape(periodo_txt)}</td>
+    <td>{html.escape(item['tipo'])}</td>
+    <td>{html.escape(item['produto'])}</td>
+    <td>{html.escape(item['origem'])}</td>
+    <td class="numero">{html.escape(numero_br(item['quantidade']))}</td>
+    <td class="numero">{dinheiro(item['valor'])}</td>
 </tr>
 """
 
         html_texto += """
 </tbody>
-
 </table>
-
 </div>
 """
 
     html_texto += """
-
 <div class="rodape">
-
     Relatório gerado pelo Controle de Estoque - Hotel.
-
     <br>
-
     Compras representam valores incorporados ao estoque.
     Saídas representam o custo registrado no momento da retirada.
-
 </div>
-
 </body>
-
 </html>
 """
 
@@ -1352,18 +1043,12 @@ tr.positivo {{
 # ============================================================
 
 def imprimir_relatorio(periodos, tipo_filtro, detalhes):
-
     try:
-
         html_texto = gerar_html_relatorio(
             periodos,
             tipo_filtro,
             detalhes
         )
-
-        # ----------------------------------------------------
-        # CRIA ARQUIVO TEMPORÁRIO
-        # ----------------------------------------------------
 
         arquivo = tempfile.NamedTemporaryFile(
             delete=False,
@@ -1372,23 +1057,11 @@ def imprimir_relatorio(periodos, tipo_filtro, detalhes):
             encoding="utf-8"
         )
 
-        arquivo.write(
-            html_texto
-        )
-
+        arquivo.write(html_texto)
         arquivo.close()
 
-        caminho = Path(
-            arquivo.name
-        )
-
-        # ----------------------------------------------------
-        # ABRE NO NAVEGADOR PADRÃO
-        # ----------------------------------------------------
-
-        webbrowser.open_new_tab(
-            caminho.as_uri()
-        )
+        caminho = Path(arquivo.name)
+        webbrowser.open_new_tab(caminho.as_uri())
 
         messagebox.showinfo(
             "Relatório aberto",
@@ -1404,7 +1077,6 @@ def imprimir_relatorio(periodos, tipo_filtro, detalhes):
         )
 
     except Exception as ex:
-
         messagebox.showerror(
             "Erro ao abrir relatório",
             (
@@ -1421,98 +1093,45 @@ def imprimir_relatorio(periodos, tipo_filtro, detalhes):
 # ============================================================
 
 def abrir_visualizacao():
-
     periodos = gerar_periodos()
 
     if not periodos:
-
         messagebox.showwarning(
             "Relatório",
-            "Informe um período válido antes de gerar o relatório."
+            "Informe um período válido antes de gerar o relatório.",
+            parent=root_ref
         )
-
         return
 
     tipo_filtro = tipo_valido()
-
     texto, detalhes = montar_texto_relatorio()
 
-    win = tk.Toplevel(
-        root_ref
-    )
+    win = tk.Toplevel(root_ref)
+    win.title("Visualização do relatório - Hotel")
+    win.geometry("1050x700")
+    win.minsize(800, 500)
+    win.transient(root_ref)
 
-    win.title(
-        "Visualização do relatório"
-    )
-
-    win.geometry(
-        "1050x700"
-    )
-
-    win.minsize(
-        800,
-        500
-    )
-
-    win.transient(
-        root_ref
-    )
-
-    # ========================================================
-    # CABEÇALHO
-    # ========================================================
-
-    topo = ttk.Frame(
-        win
-    )
-
-    topo.pack(
-        fill="x",
-        padx=12,
-        pady=10
-    )
+    topo = ttk.Frame(win)
+    topo.pack(fill="x", padx=12, pady=10)
 
     ttk.Label(
         topo,
-        text="Visualização do relatório",
+        text="📄 Relatório do Hotel",
         font=("Segoe UI", 13, "bold")
-    ).pack(
-        side="left"
-    )
+    ).pack(side="left")
 
     ttk.Label(
         topo,
-        text=f"  •  {per.get()}",
+        text=f"• {per.get()}",
         font=("Segoe UI", 10)
-    ).pack(
-        side="left",
-        padx=8
-    )
+    ).pack(side="left", padx=10)
 
-    # ========================================================
-    # ÁREA DE TEXTO
-    # ========================================================
+    area = ttk.Frame(win)
+    area.pack(fill="both", expand=True, padx=12, pady=(0, 8))
 
-    area = ttk.Frame(
-        win
-    )
-
-    area.pack(
-        fill="both",
-        expand=True,
-        padx=12,
-        pady=(0, 8)
-    )
-
-    barra_y = ttk.Scrollbar(
-        area,
-        orient="vertical"
-    )
-
-    barra_x = ttk.Scrollbar(
-        area,
-        orient="horizontal"
-    )
+    barra_y = ttk.Scrollbar(area, orient="vertical")
+    barra_x = ttk.Scrollbar(area, orient="horizontal")
 
     texto_widget = tk.Text(
         area,
@@ -1526,95 +1145,43 @@ def abrir_visualizacao():
         borderwidth=1
     )
 
-    barra_y.config(
-        command=texto_widget.yview
-    )
+    barra_y.config(command=texto_widget.yview)
+    barra_x.config(command=texto_widget.xview)
 
-    barra_x.config(
-        command=texto_widget.xview
-    )
+    texto_widget.grid(row=0, column=0, sticky="nsew")
+    barra_y.grid(row=0, column=1, sticky="ns")
+    barra_x.grid(row=1, column=0, sticky="ew")
 
-    texto_widget.grid(
-        row=0,
-        column=0,
-        sticky="nsew"
-    )
+    area.rowconfigure(0, weight=1)
+    area.columnconfigure(0, weight=1)
 
-    barra_y.grid(
-        row=0,
-        column=1,
-        sticky="ns"
-    )
+    texto_widget.insert("1.0", texto)
+    texto_widget.config(state="disabled")
 
-    barra_x.grid(
-        row=1,
-        column=0,
-        sticky="ew"
-    )
-
-    area.rowconfigure(
-        0,
-        weight=1
-    )
-
-    area.columnconfigure(
-        0,
-        weight=1
-    )
-
-    texto_widget.insert(
-        "1.0",
-        texto
-    )
-
-    texto_widget.config(
-        state="disabled"
-    )
-
-    # ========================================================
-    # RODAPÉ
-    # ========================================================
-
-    rodape = ttk.Frame(
-        win
-    )
-
-    rodape.pack(
-        fill="x",
-        padx=12,
-        pady=10
-    )
+    rodape = ttk.Frame(win)
+    rodape.pack(fill="x", padx=12, pady=10)
 
     ttk.Label(
         rodape,
-        text=(
-            "A impressão será aberta no navegador "
-            "para utilizar a impressora do computador."
-        )
-    ).pack(
-        side="left"
-    )
+        text="A impressão será aberta no navegador."
+    ).pack(side="left")
 
     ttk.Button(
         rodape,
-        text="Imprimir",
+        text="🖨️ Imprimir",
+        style="Sucesso.TButton",
         command=lambda: imprimir_relatorio(
             periodos,
             tipo_filtro,
             detalhes
         )
-    ).pack(
-        side="right"
-    )
+    ).pack(side="right")
 
     ttk.Button(
         rodape,
         text="Fechar",
         command=win.destroy
-    ).pack(
-        side="right",
-        padx=6
-    )
+    ).pack(side="right", padx=6)
 
 
 # ============================================================
@@ -1622,7 +1189,6 @@ def abrir_visualizacao():
 # ============================================================
 
 def criar_aba_relatorios(notebook, root):
-
     global rt
     global per
     global tipo
@@ -1631,29 +1197,65 @@ def criar_aba_relatorios(notebook, root):
     global por_prod
     global aviso
     global root_ref
-
     global resumo_compras
     global resumo_saidas
     global resumo_diferenca
 
     root_ref = root
 
-    aba = ttk.Frame(
-        notebook
-    )
+    aba = ttk.Frame(notebook)
+    notebook.add(aba, text="📊 Relatórios")
 
-    notebook.add(
+    # --------------------------------------------------------
+    # CABEÇALHO
+    # --------------------------------------------------------
+
+    cabecalho = tk.Frame(
         aba,
-        text="Relatórios"
+        bg=COR_FUNDO_CABECALHO
     )
+    cabecalho.pack(fill="x", padx=10, pady=(10, 4))
 
-    # ========================================================
+    textos = tk.Frame(
+        cabecalho,
+        bg=COR_FUNDO_CABECALHO
+    )
+    textos.pack(side="left", padx=12, pady=9)
+
+    tk.Label(
+        textos,
+        text="📊 Relatórios do Hotel",
+        bg=COR_FUNDO_CABECALHO,
+        fg=COR_TITULO,
+        font=("Segoe UI", 15, "bold")
+    ).pack(anchor="w")
+
+    tk.Label(
+        textos,
+        text="Compare as compras com as saídas registradas no estoque",
+        bg=COR_FUNDO_CABECALHO,
+        fg=COR_SUBTITULO,
+        font=("Segoe UI", 9)
+    ).pack(anchor="w")
+
+    ttk.Button(
+        cabecalho,
+        text="❓ Ajuda",
+        command=mostrar_ajuda
+    ).pack(side="right", padx=12)
+
+    # --------------------------------------------------------
     # FILTROS
-    # ========================================================
+    # --------------------------------------------------------
+    # --------------------------------------------------------
+    # FILTROS
+    # --------------------------------------------------------
 
-    grupo = ttk.LabelFrame(
+    grupo = tk.Frame(
         aba,
-        text="Filtros"
+        bg=BRANCO,
+        highlightbackground=BORDA,
+        highlightthickness=1
     )
 
     grupo.pack(
@@ -1663,80 +1265,146 @@ def criar_aba_relatorios(notebook, root):
     )
 
     # ========================================================
-    # PERÍODO
+    # TÍTULO
     # ========================================================
 
-    ttk.Label(
+    tk.Label(
         grupo,
-        text="Período:"
+        text="🔎 Filtros do relatório",
+        bg=BRANCO,
+        fg=TEXTO,
+        font=("Segoe UI", 10, "bold")
+    ).pack(
+        anchor="w",
+        padx=12,
+        pady=(9, 6)
+    )
+
+    # ========================================================
+    # ÁREA DOS FILTROS
+    # ========================================================
+
+    area_filtros = tk.Frame(
+        grupo,
+        bg=BRANCO
+    )
+
+    area_filtros.pack(
+        fill="x",
+        padx=12,
+        pady=(0, 10)
+    )
+
+    # ========================================================
+    # LINHA 1
+    # ========================================================
+
+    linha1 = tk.Frame(
+        area_filtros,
+        bg=BRANCO
+    )
+
+    linha1.pack(
+        fill="x",
+        pady=(0, 7)
+    )
+
+    # --------------------------------------------------------
+    # AGRUPAMENTO
+    # --------------------------------------------------------
+
+    tk.Label(
+        linha1,
+        text="📅 Agrupar por:",
+        bg=BRANCO,
+        fg=TEXTO,
+        font=("Segoe UI", 9)
     ).pack(
         side="left",
-        padx=(8, 4)
+        padx=(0, 5)
     )
 
     per = ttk.Combobox(
-        grupo,
+        linha1,
         values=[
             "Dia",
             "Mês",
             "Ano"
         ],
         state="readonly",
-        width=8
+        width=10,
+        style="App.TCombobox"
     )
 
-    per.set(
-        "Mês"
-    )
+    per.set("Mês")
 
     per.pack(
         side="left"
     )
 
-    # ========================================================
+    # --------------------------------------------------------
     # TIPO
-    # ========================================================
+    # --------------------------------------------------------
 
-    ttk.Label(
-        grupo,
-        text="Tipo:"
+    tk.Label(
+        linha1,
+        text="🏷️ Tipo de saída:",
+        bg=BRANCO,
+        fg=TEXTO,
+        font=("Segoe UI", 9)
     ).pack(
         side="left",
-        padx=(14, 4)
+        padx=(20, 5)
     )
 
     tipo = ttk.Combobox(
-        grupo,
+        linha1,
         values=[
             "todos"
         ] + TIPOS,
         state="readonly",
-        width=16
+        width=20,
+        style="App.TCombobox"
     )
 
-    tipo.set(
-        "todos"
-    )
+    tipo.set("todos")
 
     tipo.pack(
         side="left"
     )
 
     # ========================================================
-    # DATA DE
+    # LINHA 2
     # ========================================================
 
-    ttk.Label(
-        grupo,
-        text="De:"
+    linha2 = tk.Frame(
+        area_filtros,
+        bg=BRANCO
+    )
+
+    linha2.pack(
+        fill="x"
+    )
+
+    # --------------------------------------------------------
+    # DATA INICIAL
+    # --------------------------------------------------------
+
+    tk.Label(
+        linha2,
+        text="📆 De:",
+        bg=BRANCO,
+        fg=TEXTO,
+        font=("Segoe UI", 9)
     ).pack(
         side="left",
-        padx=(14, 4)
+        padx=(0, 5)
     )
 
     data_de = ttk.Entry(
-        grupo,
-        width=12
+        linha2,
+        width=13,
+        style="App.TEntry"
     )
 
     data_de.insert(
@@ -1748,21 +1416,25 @@ def criar_aba_relatorios(notebook, root):
         side="left"
     )
 
-    # ========================================================
-    # DATA ATÉ
-    # ========================================================
+    # --------------------------------------------------------
+    # DATA FINAL
+    # --------------------------------------------------------
 
-    ttk.Label(
-        grupo,
-        text="Até:"
+    tk.Label(
+        linha2,
+        text="Até:",
+        bg=BRANCO,
+        fg=TEXTO,
+        font=("Segoe UI", 9)
     ).pack(
         side="left",
-        padx=(8, 4)
+        padx=(8, 5)
     )
 
     data_ate = ttk.Entry(
-        grupo,
-        width=12
+        linha2,
+        width=13,
+        style="App.TEntry"
     )
 
     data_ate.insert(
@@ -1775,7 +1447,7 @@ def criar_aba_relatorios(notebook, root):
     )
 
     # ========================================================
-    # DETALHAR
+    # DETALHAMENTO
     # ========================================================
 
     detalhar_var = tk.IntVar(
@@ -1783,59 +1455,72 @@ def criar_aba_relatorios(notebook, root):
     )
 
     ttk.Checkbutton(
-        grupo,
+        linha2,
         text="Detalhar por produto",
         variable=detalhar_var,
-        command=atualizar_relatorio
+        command=atualizar_relatorio,
+        style="App.TCheckbutton"
     ).pack(
         side="left",
-        padx=(12, 4)
+        padx=(20, 0)
     )
+
 
     class Wrapper:
 
         def get(self):
             return detalhar_var.get()
 
+
     por_prod = Wrapper()
 
     # ========================================================
-    # GERAR RELATÓRIO
+    # BOTÕES
     # ========================================================
 
-    ttk.Button(
-        grupo,
-        text="Gerar relatório",
-        command=abrir_visualizacao
-    ).pack(
-        side="left",
-        padx=8
+    botoes = tk.Frame(
+        linha2,
+        bg=BRANCO
     )
 
-    # ========================================================
+    botoes.pack(
+        side="right"
+    )
+
+    ttk.Button(
+        botoes,
+        text="🔄 Atualizar",
+        style="Atencao.TButton",
+        command=atualizar_relatorio
+    ).pack(
+        side="left",
+        padx=(0, 6)
+    )
+
+    ttk.Button(
+        botoes,
+        text="📄 Gerar relatório",
+        style="Primario.TButton",
+        command=abrir_visualizacao
+    ).pack(
+        side="left"
+    )
+    # --------------------------------------------------------
     # AVISO
-    # ========================================================
+    # --------------------------------------------------------
 
     aviso = ttk.Label(
         aba,
         text="",
         anchor="w"
     )
+    aviso.pack(fill="x", padx=12, pady=(2, 5))
 
-    aviso.pack(
-        fill="x",
-        padx=10,
-        pady=(0, 5)
-    )
-
-    # ========================================================
+    # --------------------------------------------------------
     # TABELA
-    # ========================================================
+    # --------------------------------------------------------
 
-    tabela_frame = ttk.Frame(
-        aba
-    )
-
+    tabela_frame = ttk.Frame(aba)
     tabela_frame.pack(
         fill="both",
         expand=True,
@@ -1854,80 +1539,64 @@ def criar_aba_relatorios(notebook, root):
         ]
     )
 
-    # ========================================================
-    # RESUMO
-    # ========================================================
+    rt.tag_configure(
+        "positivo",
+        background=COR_LINHA_POSITIVO
+    )
+    rt.tag_configure(
+        "alerta",
+        background=COR_LINHA_ALERTA
+    )
+    rt.tag_configure(
+        "vazia",
+        background=COR_LINHA_VAZIA,
+        foreground="#6b7280"
+    )
+    rt.tag_configure(
+        "neutra",
+        background=COR_LINHA_NEUTRA
+    )
+
+    # --------------------------------------------------------
+    # RESUMO FINANCEIRO
+    # --------------------------------------------------------
 
     resumo = ttk.LabelFrame(
         aba,
-        text="Resumo financeiro"
+        text="💰 Resumo financeiro"
     )
+    resumo.pack(fill="x", padx=10, pady=(4, 10))
 
-    resumo.pack(
-        fill="x",
-        padx=10,
-        pady=(4, 10)
-    )
-
-    ttk.Label(
+    card1, resumo_compras = criar_card_resumo(
         resumo,
-        text="Total de compras:"
-    ).pack(
-        side="left",
-        padx=(8, 4)
+        "🛒 Total de compras",
+        COR_CARD_COMPRAS
     )
 
-    resumo_compras = ttk.Label(
+    card2, resumo_saidas = criar_card_resumo(
         resumo,
-        text="R$ 0,00",
-        font=("Segoe UI", 9, "bold")
+        "📤 Total de saídas",
+        COR_CARD_SAIDAS
     )
 
-    resumo_compras.pack(
-        side="left",
-        padx=(0, 30)
-    )
-
-    ttk.Label(
+    card3, resumo_diferenca = criar_card_resumo(
         resumo,
-        text="Total de saídas:"
-    ).pack(
-        side="left",
-        padx=(8, 4)
+        "⚖️ Diferença",
+        COR_CARD_DIFERENCA
     )
 
-    resumo_saidas = ttk.Label(
-        resumo,
-        text="R$ 0,00",
-        font=("Segoe UI", 9, "bold")
-    )
+    for card in (card1, card2, card3):
+        card.pack(
+            side="left",
+            fill="x",
+            expand=True,
+            padx=6,
+            pady=6
+        )
 
-    resumo_saidas.pack(
-        side="left",
-        padx=(0, 30)
-    )
-
-    ttk.Label(
-        resumo,
-        text="Diferença:"
-    ).pack(
-        side="left",
-        padx=(8, 4)
-    )
-
-    resumo_diferenca = ttk.Label(
-        resumo,
-        text="R$ 0,00",
-        font=("Segoe UI", 9, "bold")
-    )
-
-    resumo_diferenca.pack(
-        side="left"
-    )
-
-    # ========================================================
+    # --------------------------------------------------------
     # EVENTOS
-    # ========================================================
+    # --------------------------------------------------------
 
     per.bind(
         "<<ComboboxSelected>>",
@@ -1949,10 +1618,7 @@ def criar_aba_relatorios(notebook, root):
         atualizar_relatorio
     )
 
-    # ========================================================
     # ESTADO INICIAL
-    # ========================================================
-
     atualizar_campos_data()
 
     return aba

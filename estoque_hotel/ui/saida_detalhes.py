@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 
 from dados.hotel.database import q, run
-from estoque_hotel.ui.components import tree, sel, safe
+from estoque_hotel.front import tree, sel, safe
 from estoque_hotel.utils import fmt, ESTOQUE_SQL
 
 

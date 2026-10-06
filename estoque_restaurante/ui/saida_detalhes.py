@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 
 from dados.restaurante.database import q, run
-from estoque_restaurante.ui.components import tree, sel, safe
+from estoque_restaurante.front import tree, sel, safe
 from estoque_restaurante.utils import fmt, ESTOQUE_SQL
 
 
@@ -18,14 +18,15 @@ def selecionar_produto(root):
     busca = tk.StringVar()
 
     ttk.Label(
-        win,
-        text="Pesquisar por código ou nome:"
-    ).pack(anchor="w", padx=10, pady=(10, 0))
-
+    win,
+    text="Pesquisar por código ou nome:",
+    style="App.TLabel"
+    )
     ttk.Entry(
         win,
-        textvariable=busca
-    ).pack(fill="x", padx=10, pady=5)
+        textvariable=busca,
+        style="App.TEntry"
+    )
 
     tv = tree(
         win,
@@ -78,8 +79,9 @@ def selecionar_produto(root):
     ttk.Button(
         win,
         text="Selecionar",
-        command=confirmar
-    ).pack(pady=8)
+        command=confirmar,
+        style="Primario.TButton"
+    )
 
     carregar()
     win.wait_window()
@@ -180,11 +182,8 @@ def saida_win(root, sid):
 
     ttk.Label(
         topo,
-        text="Responsável pela retirada:"
-    ).grid(
-        row=0,
-        column=0,
-        sticky="w"
+        text="Responsável pela retirada:",
+        style="App.TLabel"
     )
 
     responsavel = tk.StringVar(
@@ -194,12 +193,8 @@ def saida_win(root, sid):
     ttk.Entry(
         topo,
         textvariable=responsavel,
-        width=30
-    ).grid(
-        row=0,
-        column=1,
-        padx=(6, 5),
-        sticky="w"
+        width=30,
+        style="App.TEntry"
     )
 
     @safe
@@ -230,11 +225,8 @@ def saida_win(root, sid):
     ttk.Button(
         topo,
         text="Salvar",
-        command=salvar_responsavel
-    ).grid(
-        row=0,
-        column=2,
-        padx=5
+        command=salvar_responsavel,
+        style="Sucesso.TButton"
     )
 
     ttk.Label(
@@ -376,8 +368,9 @@ def saida_win(root, sid):
         ttk.Entry(
             pop,
             textvariable=qtd,
-            width=12
-        ).pack(pady=8)
+            width=12,
+            style="App.TEntry"
+        )
 
         def salvar():
             try:
@@ -436,8 +429,9 @@ def saida_win(root, sid):
         ttk.Button(
             pop,
             text="Adicionar",
-            command=salvar
-        ).pack(pady=(0, 10))
+            command=salvar,
+            style="Sucesso.TButton"
+        )
 
     # ---------------- EXCLUIR ITEM ---------------- #
 
@@ -471,18 +465,16 @@ def saida_win(root, sid):
     ttk.Button(
         botoes,
         text="+ Adicionar produto",
-        command=adicionar
-    ).pack(side="left")
+        command=adicionar,
+        style="Sucesso.TButton"
+    )
 
     ttk.Button(
         botoes,
         text="Excluir item",
-        command=excluir_item
-    ).pack(
-        side="left",
-        padx=6
+        command=excluir_item,
+        style="Perigo.TButton"
     )
-
     # ---------------- RODAPÉ ---------------- #
 
     rodape = ttk.Frame(w)
@@ -495,16 +487,13 @@ def saida_win(root, sid):
     ttk.Label(
         rodape,
         text="Valor total:",
-        font=("Segoe UI", 10, "bold")
-    ).pack(side="left")
+        style="AppSubtitle.TLabel"
+    )
 
     ttk.Label(
         rodape,
         textvariable=total_var,
-        font=("Segoe UI", 10, "bold")
-    ).pack(
-        side="left",
-        padx=8
+        style="AppTitle.TLabel"
     )
 
     refresh()

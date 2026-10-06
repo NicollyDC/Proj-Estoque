@@ -3,8 +3,9 @@ from tkinter import ttk, messagebox
 
 from dados.hotel.database import q, run
 from estoque_hotel.utils import fmt, now
-from estoque_hotel.ui.components import tree, buttons, sel, safe
+from estoque_hotel.front import tree, buttons, sel, safe
 from estoque_hotel.ui.saida_detalhes import saida_win
+
 
 st = None
 root_ref = None

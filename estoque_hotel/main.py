@@ -1,143 +1,33 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 
-from estoque_hotel.app_state import salvar, tem_alteracoes
+from estoque_hotel.app_state import (
+    salvar,
+    tem_alteracoes
+)
 
-from estoque_hotel.ui.notas import criar_aba_notas
-from estoque_hotel.ui.produtos import criar_aba_produtos
-from estoque_hotel.ui.saidas import criar_aba_saidas
-from estoque_hotel.ui.relatorios import criar_aba_relatorios
+from estoque_hotel.ui.notas import (
+    criar_aba_notas
+)
 
+from estoque_hotel.ui.produtos import (
+    criar_aba_produtos
+)
 
-# ============================================================
-# CORES
-# ============================================================
+from estoque_hotel.ui.saidas import (
+    criar_aba_saidas
+)
 
-FUNDO = "#F4F6F8"
-BRANCO = "#FFFFFF"
-TEXTO = "#1F2937"
-TEXTO_SECUNDARIO = "#6B7280"
-BORDA = "#E5E7EB"
-PRINCIPAL = "#2563EB"
-PRINCIPAL_HOVER = "#1D4ED8"
+from estoque_hotel.ui.relatorios import (
+    criar_aba_relatorios
+)
 
-
-# ============================================================
-# BOTÃO ARREDONDADO
-# ============================================================
-
-def criar_botao_arredondado(
-    parent,
-    texto,
-    comando,
-    largura=150,
-    altura=38,
-    cor=PRINCIPAL,
-    cor_hover=PRINCIPAL_HOVER
-):
-    canvas = tk.Canvas(
-        parent,
-        width=largura,
-        height=altura,
-        bg=parent.cget("bg"),
-        highlightthickness=0
-    )
-
-    canvas.pack()
-
-    raio = 10
-
-    pontos = [
-        raio, 0,
-        largura - raio, 0,
-        largura, raio,
-        largura, altura - raio,
-        largura - raio, altura,
-        raio, altura,
-        0, altura - raio,
-        0, raio
-    ]
-
-    canvas.create_polygon(
-        pontos,
-        fill=cor,
-        outline=cor
-    )
-
-    canvas.create_oval(
-        0,
-        0,
-        raio * 2,
-        raio * 2,
-        fill=cor,
-        outline=cor
-    )
-
-    canvas.create_oval(
-        largura - raio * 2,
-        0,
-        largura,
-        raio * 2,
-        fill=cor,
-        outline=cor
-    )
-
-    canvas.create_oval(
-        0,
-        altura - raio * 2,
-        raio * 2,
-        altura,
-        fill=cor,
-        outline=cor
-    )
-
-    canvas.create_oval(
-        largura - raio * 2,
-        altura - raio * 2,
-        largura,
-        altura,
-        fill=cor,
-        outline=cor
-    )
-
-    texto_id = canvas.create_text(
-        largura // 2,
-        altura // 2,
-        text=texto,
-        fill=BRANCO,
-        font=("Segoe UI", 10, "bold")
-    )
-
-    def entrar(event):
-        canvas.itemconfig(
-            "all",
-            fill=cor_hover
-        )
-
-        canvas.itemconfig(
-            texto_id,
-            fill=BRANCO
-        )
-
-    def sair(event):
-        canvas.itemconfig(
-            "all",
-            fill=cor
-        )
-
-        canvas.itemconfig(
-            texto_id,
-            fill=BRANCO
-        )
-
-    def clicar(event):
-        comando()
-
-    canvas.bind("<Enter>", entrar)
-    canvas.bind("<Leave>", sair)
-    canvas.bind("<Button-1>", clicar)
-
-    return canvas
+from estoque_hotel.front import (
+    FUNDO,
+    BRANCO,
+    BORDA,
+    criar_botao_arredondado
+)
 
 
 # ============================================================
@@ -148,9 +38,18 @@ def criar_janela_hotel(painel, ao_fechar=None):
 
     root = tk.Toplevel(painel)
 
-    root.title("Controle de Estoque - Hotel")
-    root.geometry("1150x680")
-    root.minsize(1000, 600)
+    root.title(
+        "Controle de Estoque - Hotel"
+    )
+
+    root.geometry(
+        "1150x680"
+    )
+
+    root.minsize(
+        1000,
+        600
+    )
 
     root.configure(
         bg=FUNDO
@@ -222,101 +121,6 @@ def criar_janela_hotel(painel, ao_fechar=None):
             ao_fechar()
 
     # ========================================================
-    # ESTILO
-    # ========================================================
-
-    style = ttk.Style()
-
-    style.theme_use("clam")
-
-    style.configure(
-        "Hotel.TFrame",
-        background=FUNDO
-    )
-
-    style.configure(
-        "HotelCard.TFrame",
-        background=BRANCO
-    )
-
-    style.configure(
-        "Hotel.TLabel",
-        background=FUNDO,
-        foreground=TEXTO,
-        font=("Segoe UI", 10)
-    )
-
-    style.configure(
-        "HotelTitle.TLabel",
-        background=FUNDO,
-        foreground=TEXTO,
-        font=("Segoe UI", 18, "bold")
-    )
-
-    style.configure(
-        "HotelSubtitle.TLabel",
-        background=FUNDO,
-        foreground=TEXTO_SECUNDARIO,
-        font=("Segoe UI", 9)
-    )
-
-    style.configure(
-        "Hotel.TNotebook",
-        background=FUNDO,
-        borderwidth=0
-    )
-
-    style.configure(
-        "Hotel.TNotebook.Tab",
-        background="#E5E7EB",
-        foreground=TEXTO_SECUNDARIO,
-        padding=(20, 10),
-        font=("Segoe UI", 10, "bold"),
-        borderwidth=0
-    )
-
-    style.map(
-        "Hotel.TNotebook.Tab",
-        background=[
-            ("selected", BRANCO),
-            ("active", "#DCE5F5")
-        ],
-        foreground=[
-            ("selected", PRINCIPAL),
-            ("active", TEXTO)
-        ]
-    )
-
-    style.configure(
-        "Treeview",
-        background=BRANCO,
-        foreground=TEXTO,
-        fieldbackground=BRANCO,
-        rowheight=30,
-        font=("Segoe UI", 10),
-        borderwidth=0
-    )
-
-    style.configure(
-        "Treeview.Heading",
-        background="#F8FAFC",
-        foreground=TEXTO,
-        font=("Segoe UI", 10, "bold"),
-        relief="flat",
-        padding=(8, 8)
-    )
-
-    style.map(
-        "Treeview",
-        background=[
-            ("selected", "#DBEAFE")
-        ],
-        foreground=[
-            ("selected", TEXTO)
-        ]
-    )
-
-    # ========================================================
     # CABEÇALHO
     # ========================================================
 
@@ -331,6 +135,10 @@ def criar_janela_hotel(painel, ao_fechar=None):
         pady=(24, 12)
     )
 
+    # --------------------------------------------------------
+    # LADO ESQUERDO
+    # --------------------------------------------------------
+
     esquerda = tk.Frame(
         cabecalho,
         bg=FUNDO
@@ -342,26 +150,25 @@ def criar_janela_hotel(painel, ao_fechar=None):
         expand=True
     )
 
-    tk.Label(
+    ttk.Label(
         esquerda,
         text="Controle de Estoque",
-        bg=FUNDO,
-        fg=TEXTO,
-        font=("Segoe UI", 20, "bold")
+        style="AppTitle.TLabel"
     ).pack(
         anchor="w"
     )
 
-    tk.Label(
+    ttk.Label(
         esquerda,
         text="Hotel",
-        bg=FUNDO,
-        fg=TEXTO_SECUNDARIO,
-        font=("Segoe UI", 10)
+        style="AppSubtitle.TLabel"
     ).pack(
-        anchor="w",
-        pady=(2, 0)
+        anchor="w"
     )
+
+    # --------------------------------------------------------
+    # LADO DIREITO
+    # --------------------------------------------------------
 
     direita = tk.Frame(
         cabecalho,
@@ -378,7 +185,7 @@ def criar_janela_hotel(painel, ao_fechar=None):
         voltar_painel,
         largura=170,
         altura=40
-    )
+    ).pack()
 
     # ========================================================
     # ÁREA PRINCIPAL
@@ -398,6 +205,10 @@ def criar_janela_hotel(painel, ao_fechar=None):
         pady=(4, 24)
     )
 
+    # ========================================================
+    # ABAS
+    # ========================================================
+
     notebook = ttk.Notebook(
         area,
         style="Hotel.TNotebook"
@@ -411,7 +222,7 @@ def criar_janela_hotel(painel, ao_fechar=None):
     )
 
     # ========================================================
-    # ABAS
+    # NOTAS
     # ========================================================
 
     criar_aba_notas(
@@ -419,15 +230,27 @@ def criar_janela_hotel(painel, ao_fechar=None):
         root
     )
 
+    # ========================================================
+    # PRODUTOS
+    # ========================================================
+
     criar_aba_produtos(
         notebook,
         root
     )
 
+    # ========================================================
+    # SAÍDAS
+    # ========================================================
+
     criar_aba_saidas(
         notebook,
         root
     )
+
+    # ========================================================
+    # RELATÓRIOS
+    # ========================================================
 
     criar_aba_relatorios(
         notebook,
