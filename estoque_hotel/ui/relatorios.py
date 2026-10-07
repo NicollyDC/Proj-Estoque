@@ -12,6 +12,7 @@ from pathlib import Path
 from dados.hotel.database import q
 from estoque_hotel.utils import TIPOS
 from estoque_hotel.front import (tree ,BRANCO,TEXTO,BORDA)
+from ui import design_system as design
 
 
 # ============================================================
@@ -504,6 +505,7 @@ def atualizar_resumo(compras, saidas):
 
 
 def criar_card_resumo(pai, titulo, cor):
+    cores = design.palette()
     card = tk.Frame(
         pai,
         bg=cor,
@@ -517,7 +519,7 @@ def criar_card_resumo(pai, titulo, cor):
         card,
         text=titulo,
         bg=cor,
-        fg=COR_SUBTITULO,
+        fg=cores["text"],
         font=("Segoe UI", 9)
     ).pack(anchor="w")
 
@@ -525,7 +527,7 @@ def criar_card_resumo(pai, titulo, cor):
         card,
         text="R$ 0,00",
         bg=cor,
-        fg="#1f2937",
+        fg=cores["text"],
         font=("Segoe UI", 15, "bold")
     )
 
@@ -1204,7 +1206,7 @@ def criar_aba_relatorios(notebook, root):
     root_ref = root
 
     aba = ttk.Frame(notebook)
-    notebook.add(aba, text="📊 Relatórios")
+    notebook.add(aba, text="▥  Relatórios")
 
     # --------------------------------------------------------
     # CABEÇALHO
@@ -1234,7 +1236,7 @@ def criar_aba_relatorios(notebook, root):
         textos,
         text="Compare as compras com as saídas registradas no estoque",
         bg=COR_FUNDO_CABECALHO,
-        fg=COR_SUBTITULO,
+        fg=design.palette()["text"],
         font=("Segoe UI", 9)
     ).pack(anchor="w")
 

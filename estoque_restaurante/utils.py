@@ -91,3 +91,10 @@ def prod_map(incluir_id=None):
         f"{r['codigo']} - {r['nome']}": r["id"]
         for r in rows
     }
+
+
+def estoque_produto(produto_id):
+    rows = q(ESTOQUE_SQL + " WHERE p.id=?", (produto_id,))
+    if not rows:
+        return 0.0
+    return float(rows[0]["estoque"] or 0)

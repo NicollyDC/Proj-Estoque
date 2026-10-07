@@ -9,43 +9,44 @@ import sqlite3
 import traceback
 import tkinter as tk
 from tkinter import ttk, messagebox
+from ui import design_system as design
 
 
 # ============================================================
 # PALETA
 # ============================================================
 
-FUNDO = "#F6F8FB"
-BRANCO = "#FFFFFF"
+FUNDO = design.PALETA["bg"]
+BRANCO = design.PALETA["surface"]
 
-TEXTO = "#263238"
-TEXTO_SECUNDARIO = "#6B7280"
+TEXTO = design.PALETA["text"]
+TEXTO_SECUNDARIO = design.PALETA["muted"]
 
-AZUL = "#7AA7E8"
-AZUL_HOVER = "#6695DD"
-AZUL_CLARO = "#EAF2FF"
+AZUL = design.PALETA["primary"]
+AZUL_HOVER = design.PALETA["primary_hover"]
+AZUL_CLARO = design.PALETA["primary_soft"]
 
-VERDE = "#8BC9A3"
-VERDE_HOVER = "#72B98D"
+VERDE = design.PALETA["success"]
+VERDE_HOVER = "#15803D"
 VERDE_CLARO = "#EAF7EF"
 
-VERMELHO = "#E59A9A"
-VERMELHO_HOVER = "#D77F7F"
+VERMELHO = design.PALETA["danger"]
+VERMELHO_HOVER = design.PALETA["danger_hover"]
 VERMELHO_CLARO = "#FFF0F0"
 
-AMARELO = "#E8C878"
-AMARELO_HOVER = "#D9B65C"
+AMARELO = design.PALETA["warning"]
+AMARELO_HOVER = "#B45309"
 AMARELO_CLARO = "#FFF8E5"
 
-LILAS = "#B5A7E8"
-LILAS_HOVER = "#A496DB"
+LILAS = design.PALETA["info"]
+LILAS_HOVER = "#6D28D9"
 LILAS_CLARO = "#F1EEFF"
 
 CINZA = "#AAB4C0"
 CINZA_HOVER = "#929EAB"
 
-BORDA = "#E2E8F0"
-LINHA = "#F3F5F8"
+BORDA = design.PALETA["border"]
+LINHA = design.PALETA["surface2"]
 
 FONTE = "Segoe UI"
 
@@ -104,25 +105,24 @@ def criar_botao_arredondado(
         cursor="hand2"
     )
 
-    canvas.pack()
-
     _desenhar_fundo_arredondado(canvas, largura, altura, cor)
 
     canvas.create_text(
         largura // 2,
         altura // 2,
         text=texto,
-        fill=BRANCO,
-        font=(FONTE, 10, "bold")
+        fill=design.palette()["button_text"],
+        font=(FONTE, 10, "bold"),
+        tags=("button-label-primary",)
     )
 
     canvas.bind(
         "<Enter>",
-        lambda e: canvas.itemconfig("botao", fill=cor_hover, outline=cor_hover)
+        lambda e: canvas.itemconfig("botao", fill=design.palette()["primary_hover"], outline=design.palette()["primary_hover"])
     )
     canvas.bind(
         "<Leave>",
-        lambda e: canvas.itemconfig("botao", fill=cor, outline=cor)
+        lambda e: canvas.itemconfig("botao", fill=design.palette()["primary"], outline=design.palette()["primary"])
     )
     canvas.bind("<Button-1>", lambda e: comando())
 
@@ -182,7 +182,7 @@ def configurar():
         "AppTitle.TLabel",
         background=FUNDO,
         foreground=TEXTO,
-        font=(FONTE, 18, "bold")
+        font=(FONTE, 15, "bold")
     )
 
     style.configure(
@@ -437,7 +437,7 @@ def form(parent, title, fields, values=None):
 
     tk.Label(
         cabecalho,
-        text="Preencha as informações abaixo.",
+        text="Preencha as informações e clique em Salvar. Use Cancelar para voltar sem gravar.",
         bg=BRANCO,
         fg=TEXTO_SECUNDARIO,
         font=(FONTE, 9)
@@ -477,15 +477,32 @@ def form(parent, title, fields, values=None):
         elif kind in ("combo", "combo_ro"):
 
             var = tk.StringVar(value=valor or "")
+            opcoes = tuple(options or ())
 
             widget = ttk.Combobox(
                 area,
                 textvariable=var,
-                values=options,
+                values=opcoes,
                 width=38,
                 state="readonly" if kind == "combo_ro" else "normal",
                 style="App.TCombobox"
             )
+            if kind == "combo":
+                def filtrar(event, combo=widget, variable=var, all_options=opcoes):
+                    if event.keysym in {"Up", "Down", "Left", "Right", "Return", "Escape", "Tab", "Shift_L", "Control_L"}:
+                        return
+                    termo = variable.get().strip().casefold()
+                    resultados = design.filtrar_opcoes(all_options, termo)
+                    combo.configure(values=resultados if termo else all_options)
+                    if termo and resultados:
+                        def abrir_lista():
+                            try:
+                                combo.tk.call("ttk::combobox::Post", combo)
+                            except tk.TclError:
+                                pass
+                        combo.after_idle(abrir_lista)
+                widget.bind("<KeyRelease>", filtrar)
+                widget.bind("<<ComboboxSelected>>", lambda _event, combo=widget, all_options=opcoes: combo.configure(values=all_options))
 
         else:
 
@@ -518,12 +535,25 @@ def form(parent, title, fields, values=None):
         resultado.update({k: v.get() for k, v in variaveis.items()})
         win.destroy()
 
+    def cancelar():
+        win.destroy()
+
     ttk.Button(
         rodape,
-        text="✓  Salvar",
+        text="Cancelar",
+        command=cancelar,
+        style="Padrao.TButton"
+    ).pack(side="right", padx=(0, 20), pady=12)
+
+    ttk.Button(
+        rodape,
+        text="Salvar",
         command=salvar,
-        style="Sucesso.TButton"
-    ).pack(side="right", padx=20, pady=12)
+        style="Primario.TButton"
+    ).pack(side="right", padx=8, pady=12)
+
+    win.bind("<Return>", lambda e: salvar())
+    win.bind("<Escape>", lambda e: cancelar())
 
     # ---------------- tamanho da janela ----------------
 
@@ -561,7 +591,8 @@ def tree(parent, cols):
     for key, title, width in cols:
 
         tabela.heading(key, text=title)
-        tabela.column(key, width=width, minwidth=50, anchor="w")
+        numeric = key.lower() in {"est", "min", "qtd", "quantidade", "valor", "total", "subtotal", "vu", "itens"}
+        tabela.column(key, width=width, minwidth=50, anchor="e" if numeric else "w")
 
     barra = ttk.Scrollbar(
         frame,
@@ -584,12 +615,13 @@ def tree(parent, cols):
 
 # A ordem importa: a primeira categoria que casar define o estilo.
 _PALAVRAS_POR_ESTILO = (
-    ("Perigo.TButton", ("excluir", "remover", "apagar", "deletar", "cancelar")),
-    ("Sucesso.TButton", ("salvar", "adicionar", "nova", "novo", "criar",
+    ("Perigo.TButton", ("excluir", "remover", "apagar", "deletar")),
+    ("Primario.TButton", ("salvar", "adicionar", "nova", "novo", "criar",
                          "confirmar", "importar")),
     ("Primario.TButton", ("abrir", "editar", "selecionar", "visualizar",
-                          "detalhes")),
+                          "detalhes", "consultar")),
     ("Atencao.TButton", ("atualizar", "recarregar", "refresh")),
+    ("Padrao.TButton", ("limpar", "cancelar", "voltar", "fechar")),
 )
 
 
@@ -627,13 +659,17 @@ def buttons(parent, items):
 # SELEÇÃO
 # ============================================================
 
-def sel(treeview):
+def sel(treeview, parent=None):
 
     selecionado = treeview.selection()
 
     if not selecionado:
 
-        messagebox.showinfo("Atenção", "Selecione uma linha primeiro.")
+        messagebox.showinfo(
+            "Atenção",
+            "Selecione uma linha da lista primeiro.",
+            parent=parent
+        )
         return None
 
     return int(selecionado[0])
@@ -655,11 +691,27 @@ def safe(func):
             messagebox.showerror("Erro", str(e))
 
         except sqlite3.IntegrityError as e:
-            messagebox.showerror("Banco de Dados", str(e))
+            texto = str(e).lower()
+            if "foreign key" in texto:
+                msg = (
+                    "Não foi possível concluir esta operação porque existem "
+                    "movimentações ou vínculos relacionados."
+                )
+            elif "unique" in texto:
+                msg = (
+                    "Já existe um cadastro com essas informações. "
+                    "Verifique o código do produto ou a chave da nota."
+                )
+            else:
+                msg = "Não foi possível gravar os dados. Confira as informações e tente novamente."
+            messagebox.showerror("Não foi possível salvar", msg)
 
-        except Exception as e:
+        except Exception:
             traceback.print_exc()
-            messagebox.showerror("Erro inesperado", str(e))
+            messagebox.showerror(
+                "Algo deu errado",
+                "Não foi possível concluir esta ação. Tente novamente."
+            )
 
     return wrapper
 
@@ -670,3 +722,4 @@ def safe(func):
 
 configurar()
 configurar_notebook_restaurante()
+design.configure_styles()

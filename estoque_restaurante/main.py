@@ -1,7 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
+from ui import design_system as design
 
-from estoque_restaurante.app_state import salvar, tem_alteracoes
+from estoque_restaurante.app_state import salvar
 
 from estoque_restaurante.ui.notas import criar_aba_notas
 from estoque_restaurante.ui.produtos import criar_aba_produtos
@@ -14,8 +15,6 @@ from estoque_restaurante.front import (
     BORDA,
     criar_botao_arredondado,
 )
-
-
 # ============================================================
 # JANELA DO RESTAURANTE
 # ============================================================
@@ -45,64 +44,23 @@ def criar_janela_restaurante(painel, ao_fechar=None):
     # SALVAR
     # ========================================================
 
-    def salvar_com_mensagem():
-
-        salvar()
-
-        messagebox.showinfo(
-            "Salvar",
-            "Alterações salvas com sucesso!",
-            parent=root
-        )
-
-    # ========================================================
-    # FECHAR
-    # ========================================================
-
     def fechar():
-
-        if tem_alteracoes():
-
-            resp = messagebox.askyesnocancel(
-                "Salvar alterações",
-                "Deseja salvar antes de sair?",
-                parent=root
-            )
-
-            if resp is None:
-                return
-
-            if resp:
-                salvar_com_mensagem()
-
+        salvar()
         root.destroy()
-
         if ao_fechar:
             ao_fechar()
 
-    # ========================================================
-    # VOLTAR AO PAINEL
-    # ========================================================
-
     def voltar_painel():
+        if not messagebox.askyesno(
+            "Voltar ao painel",
+            "Deseja voltar à tela inicial?\n\n"
+            "As informações já gravadas no estoque do Restaurante permanecem salvas.",
+            parent=root
+        ):
+            return
 
-        if tem_alteracoes():
-
-            resp = messagebox.askyesnocancel(
-                "Salvar alterações",
-                "Existem alterações não salvas.\n\n"
-                "Deseja salvar antes de voltar ao painel?",
-                parent=root
-            )
-
-            if resp is None:
-                return
-
-            if resp:
-                salvar_com_mensagem()
-
+        salvar()
         root.destroy()
-
         if ao_fechar:
             ao_fechar()
 
@@ -134,7 +92,7 @@ def criar_janela_restaurante(painel, ao_fechar=None):
 
     ttk.Label(
         esquerda,
-        text="Controle de Estoque",
+        text="▦  Estoque Restaurante",
         style="AppTitle.TLabel"
     ).pack(
         anchor="w"
@@ -164,28 +122,23 @@ def criar_janela_restaurante(painel, ao_fechar=None):
 
     criar_botao_arredondado(
         direita,
-        "← Voltar ao painel",
+        "↩  Voltar ao painel",
         voltar_painel,
         largura=170,
         altura=40
-    )
+    ).pack(side="right")
 
     # ========================================================
     # ÁREA PRINCIPAL
     # ========================================================
 
-    area = tk.Frame(
-        root,
-        bg=BRANCO,
-        highlightbackground=BORDA,
-        highlightthickness=1
-    )
+    area = tk.Frame(root, bg=FUNDO)
 
     area.pack(
         fill="both",
         expand=True,
         padx=28,
-        pady=(4, 24)
+        pady=(4, 18)
     )
 
     # ========================================================
@@ -200,8 +153,8 @@ def criar_janela_restaurante(painel, ao_fechar=None):
     notebook.pack(
         fill="both",
         expand=True,
-        padx=12,
-        pady=12
+        padx=0,
+        pady=0
     )
 
     # ========================================================
@@ -237,4 +190,5 @@ def criar_janela_restaurante(painel, ao_fechar=None):
         fechar
     )
 
+    design.configure_styles()
     return root

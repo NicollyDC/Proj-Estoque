@@ -13,6 +13,7 @@ from pathlib import Path
 from dados.restaurante.database import q
 from estoque_restaurante.utils import TIPOS
 from estoque_restaurante.front import tree
+from ui import design_system as design
 
 
 # ============================================================
@@ -1745,6 +1746,7 @@ def criar_card_resumo(
     titulo,
     cor
 ):
+    cores = design.palette()
 
     card = tk.Frame(
         pai,
@@ -1759,7 +1761,7 @@ def criar_card_resumo(
         card,
         text=titulo,
         bg=cor,
-        fg=COR_TEXTO_SUB,
+        fg=cores["text"],
         font=("Segoe UI", 9)
     ).pack(
         anchor="w"
@@ -1769,7 +1771,7 @@ def criar_card_resumo(
         card,
         text="R$ 0,00",
         bg=cor,
-        fg="#1f2937",
+        fg=cores["text"],
         font=("Segoe UI", 15, "bold")
     )
 
@@ -1810,7 +1812,7 @@ def criar_aba_relatorios(
 
     notebook.add(
         aba,
-        text="📊 Relatórios"
+        text="▥  Relatórios"
     )
 
     # ========================================================
@@ -1841,7 +1843,7 @@ def criar_aba_relatorios(
 
     tk.Label(
         textos,
-        text="📊 Relatórios",
+        text="▥  Relatórios",
         bg=COR_FUNDO_CABECALHO,
         fg=COR_TEXTO_TITULO,
         font=("Segoe UI", 15, "bold")
@@ -1856,7 +1858,7 @@ def criar_aba_relatorios(
             "saiu do estoque"
         ),
         bg=COR_FUNDO_CABECALHO,
-        fg=COR_TEXTO_SUB,
+        fg=design.palette()["text"],
         font=("Segoe UI", 9)
     ).pack(
         anchor="w"

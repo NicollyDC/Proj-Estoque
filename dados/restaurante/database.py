@@ -122,6 +122,11 @@ con.execute("""
     ON notas(chave)
 """)
 
+con.execute("""
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_notas_chave_unica
+    ON notas(chave)
+    WHERE chave IS NOT NULL AND chave != ''
+""")
 
 con.commit()
 
@@ -130,6 +135,18 @@ con.commit()
 
 def q(sql, parametros=()):
     return con.execute(sql, parametros).fetchall()
+
+
+def execute(sql, parametros=()):
+    return con.execute(sql, parametros)
+
+
+def commit():
+    con.commit()
+
+
+def rollback():
+    con.rollback()
 
 
 def run(sql, parametros=()):

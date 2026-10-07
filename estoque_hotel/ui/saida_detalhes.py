@@ -3,10 +3,8 @@ from tkinter import ttk, messagebox
 
 from dados.hotel.database import q, run
 from estoque_hotel.front import tree, sel, safe
-from estoque_hotel.utils import fmt, ESTOQUE_SQL
+from estoque_hotel.utils import fmt, ESTOQUE_SQL, TIPOS
 
-
-# ---------------- PESQUISA DE PRODUTO ---------------- #
 
 def selecionar_produto(root):
     win = tk.Toplevel(root)
@@ -19,21 +17,10 @@ def selecionar_produto(root):
 
     ttk.Label(
         win,
-        text="Pesquisar por código ou nome:"
-    ).pack(
-        anchor="w",
-        padx=10,
-        pady=(10, 0)
-    )
+        text="Pesquise pelo código ou pelo nome do produto:"
+    ).pack(anchor="w", padx=10, pady=(10, 0))
 
-    ttk.Entry(
-        win,
-        textvariable=busca
-    ).pack(
-        fill="x",
-        padx=10,
-        pady=5
-    )
+    ttk.Entry(win, textvariable=busca).pack(fill="x", padx=10, pady=5)
 
     tv = tree(
         win,
@@ -41,7 +28,7 @@ def selecionar_produto(root):
             ("cod", "Código", 90),
             ("nome", "Produto", 270),
             ("est", "Estoque", 80),
-            ("un", "Un", 60),
+            ("un", "Unidade", 60),
         ],
     )
 
@@ -49,14 +36,10 @@ def selecionar_produto(root):
 
     def carregar(*_):
         termo = busca.get().lower()
-
         tv.delete(*tv.get_children())
 
-        for p in q(
-            ESTOQUE_SQL + " WHERE ativo=1 ORDER BY p.nome"
-        ):
+        for p in q(ESTOQUE_SQL + " WHERE ativo=1 ORDER BY p.nome"):
             texto = f"{p['codigo']} {p['nome']}".lower()
-
             if termo in texto:
                 tv.insert(
                     "",
@@ -71,281 +54,152 @@ def selecionar_produto(root):
                 )
 
     def confirmar(event=None):
-        pid = sel(tv)
-
+        pid = sel(tv, win)
         if not pid:
             return
-
         escolhido["id"] = int(pid)
         win.destroy()
 
-    busca.trace_add(
-        "write",
-        carregar
-    )
+    busca.trace_add("write", carregar)
+    tv.bind("<Double-1>", confirmar)
 
-    tv.bind(
-        "<Double-1>",
-        confirmar
-    )
-
-    ttk.Button(
-        win,
-        text="Selecionar",
-        command=confirmar
-    ).pack(
-        pady=8
-    )
+    ttk.Button(win, text="Selecionar", command=confirmar).pack(pady=8)
+    ttk.Button(win, text="Cancelar", command=win.destroy).pack(pady=(0, 8))
 
     carregar()
-
     win.wait_window()
-
     return escolhido["id"]
 
 
-# ---------------- CUSTO MÉDIO ---------------- #
-
 def obter_custo_medio(produto_id):
-    """
-    Calcula o custo médio atual do estoque.
-
-    Valor do estoque =
-        valor das entradas
-        - valor das saídas
-
-    Custo médio =
-        valor do estoque / quantidade em estoque
-    """
-
     dados = q("""
         SELECT
-            COALESCE(
-                (
-                    SELECT SUM(
-                        qtd_estoque * COALESCE(valor_unit, 0)
-                    )
-                    FROM itens
-                    WHERE produto_id=?
-                ),
-                0
-            ) AS valor_entradas,
-
-            COALESCE(
-                (
-                    SELECT SUM(
-                        qtd * COALESCE(valor_unit, 0)
-                    )
-                    FROM itens_saida
-                    WHERE produto_id=?
-                ),
-                0
-            ) AS valor_saidas,
-
-            COALESCE(
-                (
-                    SELECT SUM(qtd_estoque)
-                    FROM itens
-                    WHERE produto_id=?
-                ),
-                0
-            ) AS qtd_entradas,
-
-            COALESCE(
-                (
-                    SELECT SUM(qtd)
-                    FROM itens_saida
-                    WHERE produto_id=?
-                ),
-                0
-            ) AS qtd_saidas
-    """, (
-        produto_id,
-        produto_id,
-        produto_id,
-        produto_id,
-    ))
+            COALESCE((
+                SELECT SUM(qtd_estoque * COALESCE(valor_unit, 0))
+                FROM itens WHERE produto_id=?
+            ), 0) AS valor_entradas,
+            COALESCE((
+                SELECT SUM(qtd * COALESCE(valor_unit, 0))
+                FROM itens_saida WHERE produto_id=?
+            ), 0) AS valor_saidas,
+            COALESCE((
+                SELECT SUM(qtd_estoque) FROM itens WHERE produto_id=?
+            ), 0) AS qtd_entradas,
+            COALESCE((
+                SELECT SUM(qtd) FROM itens_saida WHERE produto_id=?
+            ), 0) AS qtd_saidas
+    """, (produto_id, produto_id, produto_id, produto_id))
 
     if not dados:
         return None, 0
 
     r = dados[0]
-
-    qtd_estoque = (
-        (r["qtd_entradas"] or 0)
-        - (r["qtd_saidas"] or 0)
-    )
-
-    valor_estoque = (
-        (r["valor_entradas"] or 0)
-        - (r["valor_saidas"] or 0)
-    )
+    qtd_estoque = (r["qtd_entradas"] or 0) - (r["qtd_saidas"] or 0)
+    valor_estoque = (r["valor_entradas"] or 0) - (r["valor_saidas"] or 0)
 
     if qtd_estoque <= 0:
         return None, max(qtd_estoque, 0)
 
-    custo_medio = valor_estoque / qtd_estoque
+    return valor_estoque / qtd_estoque, qtd_estoque
 
-    return custo_medio, qtd_estoque
-
-
-# ---------------- JANELA PRINCIPAL ---------------- #
 
 def saida_win(root, sid):
     w = tk.Toplevel(root)
-
     w.title(f"Saída #{sid}")
-    w.geometry("850x600")
+    w.geometry("900x620")
+    w.minsize(760, 520)
+    w.transient(root)
 
-    cab = q(
-        "SELECT * FROM saidas WHERE id=?",
-        (sid,)
-    )[0]
+    cab = q("SELECT * FROM saidas WHERE id=?", (sid,))
+    if not cab:
+        messagebox.showerror("Saída", "Esta saída não foi encontrada.", parent=root)
+        w.destroy()
+        return
 
-    # ========================================================
-    # CABEÇALHO
-    # ========================================================
+    cab = cab[0]
 
     topo = ttk.Frame(w)
+    topo.pack(fill="x", padx=12, pady=10)
+    topo.columnconfigure(1, weight=1)
 
-    topo.pack(
-        fill="x",
-        padx=10,
-        pady=8
-    )
+    ttk.Label(topo, text="Responsável pela retirada:").grid(row=0, column=0, sticky="w")
 
-    # --------------------------------------------------------
-    # RESPONSÁVEL
-    # --------------------------------------------------------
+    responsavel_var = tk.StringVar(value=cab["responsavel"] or "")
+    entrada_responsavel = ttk.Entry(topo, textvariable=responsavel_var, width=32)
+    entrada_responsavel.grid(row=0, column=1, padx=(8, 6), sticky="ew")
 
-    ttk.Label(
+    ttk.Label(topo, text="Tipo:").grid(row=0, column=2, padx=(12, 4))
+    tipo_var = tk.StringVar(value=cab["tipo"] or "uso e consumo")
+    tipo_combo = ttk.Combobox(
         topo,
-        text="Responsável pela retirada:"
-    ).grid(
-        row=0,
-        column=0,
-        sticky="w"
+        textvariable=tipo_var,
+        values=TIPOS,
+        state="readonly",
+        width=16
     )
+    tipo_combo.grid(row=0, column=3, padx=(0, 8))
 
-    responsavel_var = tk.StringVar(
-        value=cab["responsavel"] or ""
-    )
-
-    entrada_responsavel = ttk.Entry(
-        topo,
-        textvariable=responsavel_var,
-        width=35
-    )
-
-    entrada_responsavel.grid(
-        row=0,
-        column=1,
-        padx=(8, 6),
-        sticky="w"
-    )
-
-    def salvar_responsavel():
-
+    def salvar_cabecalho():
         responsavel = responsavel_var.get().strip()
+        tipo = tipo_var.get().strip()
 
         if not responsavel:
             messagebox.showwarning(
                 "Responsável",
-                "Informe quem foi o responsável pela retirada.",
+                "Informe quem retirou os produtos.",
                 parent=w
             )
             entrada_responsavel.focus()
-            return
+            return False
+
+        if tipo not in TIPOS:
+            messagebox.showwarning("Tipo", "Selecione o tipo da saída.", parent=w)
+            return False
 
         run(
-            """
-            UPDATE saidas
-            SET responsavel=?
-            WHERE id=?
-            """,
-            (
-                responsavel,
-                sid,
-            )
+            "UPDATE saidas SET responsavel=?, tipo=? WHERE id=?",
+            (responsavel, tipo, sid)
         )
+        return True
 
-        messagebox.showinfo(
-            "Responsável",
-            "Responsável salvo com sucesso.",
-            parent=w
+    ttk.Button(topo, text="Salvar dados", command=lambda: (
+        salvar_cabecalho() and messagebox.showinfo(
+            "Saída", "Responsável e tipo salvos.", parent=w
         )
+    )).grid(row=0, column=4, padx=(0, 10))
 
-    ttk.Button(
-        topo,
-        text="Salvar",
-        command=salvar_responsavel
-    ).grid(
-        row=0,
-        column=2,
-        padx=(0, 15)
-    )
+    ttk.Label(topo, text=f"Data: {cab['data_hora']}").grid(row=0, column=5, padx=6)
 
-    # --------------------------------------------------------
-    # INFORMAÇÕES
-    # --------------------------------------------------------
+    rodape = ttk.Frame(w)
+    rodape.pack(fill="x", side="bottom", padx=12, pady=10)
 
-    ttk.Label(
-        topo,
-        text=f"Tipo: {cab['tipo']}"
-    ).grid(
-        row=0,
-        column=3,
-        padx=10
-    )
-
-    ttk.Label(
-        topo,
-        text=f"Data: {cab['data_hora']}"
-    ).grid(
-        row=0,
-        column=4,
-        padx=10
-    )
-
-    # ========================================================
-    # TABELA
-    # ========================================================
+    botoes = ttk.Frame(w)
+    botoes.pack(fill="x", padx=12, pady=(0, 6))
 
     tv = tree(
         w,
         [
             ("cod", "Código", 90),
             ("prod", "Produto", 260),
-            ("qtd", "Qtd", 70),
-            ("vu", "Valor Unit.", 100),
+            ("qtd", "Quantidade", 90),
+            ("vu", "Valor unitário", 110),
             ("sub", "Subtotal", 110),
         ],
     )
 
-    total_var = tk.StringVar(
-        value="R$ 0,00"
-    )
+    total_var = tk.StringVar(value="R$ 0,00")
 
     def refresh():
-        tv.delete(
-            *tv.get_children()
-        )
-
+        tv.delete(*tv.get_children())
         total = 0
-
         for i in q("""
-            SELECT i.*,
-                   p.codigo,
-                   p.nome
+            SELECT i.*, p.codigo, p.nome
             FROM itens_saida i
-            JOIN produtos p
-                ON p.id=i.produto_id
+            JOIN produtos p ON p.id=i.produto_id
             WHERE saida_id=?
             ORDER BY i.id
         """, (sid,)):
-
             total += i["subtotal"] or 0
-
             tv.insert(
                 "",
                 "end",
@@ -354,241 +208,131 @@ def saida_win(root, sid):
                     i["codigo"],
                     i["nome"],
                     fmt(i["qtd"]),
-                    f"R$ {i['valor_unit']:.2f}",
-                    f"R$ {i['subtotal']:.2f}",
+                    f"R$ {(i['valor_unit'] or 0):.2f}",
+                    f"R$ {(i['subtotal'] or 0):.2f}",
                 ),
             )
-
-        total_var.set(
-            f"R$ {total:.2f}"
-        )
-
-    # ========================================================
-    # ADICIONAR PRODUTO
-    # ========================================================
+        total_var.set(f"R$ {total:.2f}")
 
     @safe
     def adicionar():
+        if not salvar_cabecalho():
+            return
 
         pid = selecionar_produto(w)
-
         if not pid:
             return
 
-        prod = q("""
-            SELECT *
-            FROM produtos
-            WHERE id=?
-        """, (pid,))
-
+        prod = q("SELECT * FROM produtos WHERE id=?", (pid,))
         if not prod:
-            messagebox.showerror(
-                "Erro",
-                "Produto não encontrado."
-            )
+            messagebox.showerror("Produto", "Produto não encontrado.", parent=w)
             return
 
         prod = prod[0]
-
         custo_medio, estoque = obter_custo_medio(pid)
 
         if estoque <= 0:
             messagebox.showwarning(
                 "Estoque insuficiente",
-                "Esse produto não possui estoque disponível."
+                "Esse produto não possui quantidade disponível no estoque.",
+                parent=w
             )
             return
 
         if custo_medio is None:
             messagebox.showwarning(
                 "Sem custo",
-                "Não foi possível calcular o custo médio deste produto."
+                "Não foi possível calcular o valor deste produto. "
+                "Confira se ele está vinculado a uma nota com valor.",
+                parent=w
             )
             return
 
         pop = tk.Toplevel(w)
-
         pop.title("Quantidade")
         pop.transient(w)
         pop.grab_set()
 
+        ttk.Label(pop, text=f"{prod['codigo']} - {prod['nome']}").pack(padx=12, pady=(12, 6))
         ttk.Label(
             pop,
-            text=f"{prod['codigo']} - {prod['nome']}"
-        ).pack(
-            padx=10,
-            pady=(10, 5)
-        )
-
-        ttk.Label(
-            pop,
-            text=(
-                f"Estoque disponível: "
-                f"{fmt(round(estoque, 4))} "
-                f"{prod['unidade'] or ''}"
-            )
+            text=f"Disponível: {fmt(round(estoque, 4))} {prod['unidade'] or ''}"
         ).pack()
-
-        ttk.Label(
-            pop,
-            text=f"Custo médio: R$ {custo_medio:.2f}"
-        ).pack(
-            pady=(4, 0)
-        )
+        ttk.Label(pop, text=f"Valor unitário: R$ {custo_medio:.2f}").pack(pady=(4, 0))
+        ttk.Label(pop, text="Quantidade a retirar:").pack(pady=(8, 0))
 
         qtd = tk.StringVar()
+        entrada = ttk.Entry(pop, textvariable=qtd, width=14)
+        entrada.pack(pady=8)
+        entrada.focus_set()
 
-        ttk.Entry(
-            pop,
-            textvariable=qtd,
-            width=12
-        ).pack(
-            pady=8
-        )
-
-        def salvar():
-
+        def salvar_item():
             try:
-                qv = float(
-                    qtd.get().replace(",", ".")
-                )
-
+                qv = float(qtd.get().replace(",", "."))
                 if qv <= 0:
                     raise ValueError
-
             except ValueError:
-                messagebox.showerror(
-                    "Erro",
-                    "Quantidade inválida."
-                )
+                messagebox.showerror("Quantidade", "Informe uma quantidade maior que zero.", parent=pop)
                 return
 
-            if qv > estoque:
+            _, estoque_atual = obter_custo_medio(pid)
+            if qv > estoque_atual:
                 messagebox.showwarning(
                     "Estoque insuficiente",
-                    (
-                        f"A quantidade informada é maior que "
-                        f"o estoque disponível.\n\n"
-                        f"Estoque disponível: "
-                        f"{fmt(round(estoque, 4))}\n"
-                        f"Quantidade solicitada: {fmt(qv)}"
-                    )
+                    "A quantidade informada é maior que o estoque disponível.\n\n"
+                    f"Disponível: {fmt(round(estoque_atual, 4))}\n"
+                    f"Informado: {fmt(qv)}",
+                    parent=pop
                 )
                 return
 
-            subtotal = round(
-                qv * custo_medio,
-                2
-            )
-
-            run("""
+            subtotal = round(qv * custo_medio, 2)
+            run(
+                """
                 INSERT INTO itens_saida(
-                    saida_id,
-                    produto_id,
-                    qtd,
-                    valor_unit,
-                    subtotal
+                    saida_id, produto_id, qtd, valor_unit, subtotal
                 )
                 VALUES (?, ?, ?, ?, ?)
-            """, (
-                sid,
-                pid,
-                qv,
-                custo_medio,
-                subtotal,
-            ))
-
+                """,
+                (sid, pid, qv, custo_medio, subtotal)
+            )
             pop.destroy()
-
             refresh()
 
-        ttk.Button(
-            pop,
-            text="Adicionar",
-            command=salvar
-        ).pack(
-            pady=(0, 10)
-        )
-
-    # ========================================================
-    # EXCLUIR ITEM
-    # ========================================================
+        ttk.Button(pop, text="Adicionar", command=salvar_item).pack(pady=(0, 4))
+        ttk.Button(pop, text="Cancelar", command=pop.destroy).pack(pady=(0, 10))
+        pop.bind("<Return>", lambda e: salvar_item())
 
     @safe
     def excluir_item():
-
-        iid = sel(tv)
-
+        iid = sel(tv, w)
         if not iid:
             return
 
-        if messagebox.askyesno(
-            "Excluir",
-            "Remover este item da saída?"
-        ):
-            run(
-                "DELETE FROM itens_saida WHERE id=?",
-                (iid,)
-            )
-
+        if messagebox.askyesno("Excluir item", "Remover este produto da saída?", parent=w):
+            run("DELETE FROM itens_saida WHERE id=?", (iid,))
             refresh()
 
-    # ========================================================
-    # BOTÕES
-    # ========================================================
+    def fechar():
+        if not salvar_cabecalho():
+            return
 
-    botoes = ttk.Frame(w)
+        itens = q("SELECT COUNT(*) AS n FROM itens_saida WHERE saida_id=?", (sid,))
+        if itens and itens[0]["n"] == 0:
+            if messagebox.askyesno(
+                "Saída vazia",
+                "Esta saída não possui produtos.\n\nDeseja apagá-la?",
+                parent=w
+            ):
+                run("DELETE FROM saidas WHERE id=?", (sid,))
+        w.destroy()
 
-    botoes.pack(
-        fill="x",
-        padx=10,
-        pady=6
-    )
+    ttk.Button(botoes, text="+ Adicionar produto", command=adicionar).pack(side="left")
+    ttk.Button(botoes, text="Excluir item", command=excluir_item).pack(side="left", padx=6)
 
-    ttk.Button(
-        botoes,
-        text="+ Adicionar produto",
-        command=adicionar
-    ).pack(
-        side="left"
-    )
+    ttk.Label(rodape, text="Valor total:", font=("Segoe UI", 10, "bold")).pack(side="left")
+    ttk.Label(rodape, textvariable=total_var, font=("Segoe UI", 10, "bold")).pack(side="left", padx=8)
+    ttk.Button(rodape, text="Fechar", command=fechar).pack(side="right")
 
-    ttk.Button(
-        botoes,
-        text="Excluir item",
-        command=excluir_item
-    ).pack(
-        side="left",
-        padx=6
-    )
-
-    # ========================================================
-    # RODAPÉ
-    # ========================================================
-
-    rodape = ttk.Frame(w)
-
-    rodape.pack(
-        fill="x",
-        padx=10,
-        pady=10
-    )
-
-    ttk.Label(
-        rodape,
-        text="Valor total:",
-        font=("Segoe UI", 10, "bold")
-    ).pack(
-        side="left"
-    )
-
-    ttk.Label(
-        rodape,
-        textvariable=total_var,
-        font=("Segoe UI", 10, "bold")
-    ).pack(
-        side="left",
-        padx=8
-    )
-
+    w.protocol("WM_DELETE_WINDOW", fechar)
     refresh()

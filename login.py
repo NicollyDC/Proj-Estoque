@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
+from ui import design_system as design
 import hashlib
 import secrets
 
@@ -10,17 +11,14 @@ from dados.usuarios.database import q, run
 # CORES
 # ============================================================
 
-FUNDO = "#F4F6F8"
-BRANCO = "#FFFFFF"
-
-TEXTO = "#1F2937"
-TEXTO_SECUNDARIO = "#6B7280"
-
-PRINCIPAL = "#2563EB"
-PRINCIPAL_HOVER = "#1D4ED8"
-
-BORDA = "#E5E7EB"
-PERIGO = "#DC2626"
+FUNDO = design.PALETA["bg"]
+BRANCO = design.PALETA["surface"]
+TEXTO = design.PALETA["text"]
+TEXTO_SECUNDARIO = design.PALETA["muted"]
+PRINCIPAL = design.PALETA["primary"]
+PRINCIPAL_HOVER = design.PALETA["primary_hover"]
+BORDA = design.PALETA["border"]
+PERIGO = design.PALETA["danger"]
 
 
 # ============================================================
@@ -344,6 +342,7 @@ class TelaPrimeiroAdmin:
         )
 
         self.criar_interface()
+        design.configure_styles()
 
         self.centralizar()
 
@@ -506,11 +505,14 @@ class TelaPrimeiroAdmin:
 
         entrada = tk.Entry(
             parent,
-            bg="#FFFFFF",
+            bg=BRANCO,
             fg=TEXTO,
             relief="solid",
             bd=1,
-            highlightthickness=0,
+            highlightthickness=1,
+            highlightbackground=BORDA,
+            highlightcolor=design.palette()["focus"],
+            insertbackground=TEXTO,
             font=("Segoe UI", 10),
             show="*" if senha else ""
         )
@@ -684,6 +686,7 @@ class TelaLogin:
         )
 
         self.criar_interface()
+        design.configure_styles()
 
         self.centralizar()
 
@@ -713,11 +716,12 @@ class TelaLogin:
             bg=FUNDO
         )
 
-        header.pack(
-            fill="x",
-            padx=45,
-            pady=(38, 0)
-        )
+        header.pack(fill="x", padx=36, pady=(25, 0))
+
+        tk.Label(
+            header, text="▦", bg=FUNDO, fg=design.PALETA["primary"],
+            font=("Segoe UI Symbol", 30, "bold")
+        ).pack(anchor="center", pady=(0, 5))
 
         tk.Label(
             header,
@@ -725,28 +729,25 @@ class TelaLogin:
             bg=FUNDO,
             fg=TEXTO,
             font=("Segoe UI", 23, "bold")
-        ).pack(anchor="w")
+        ).pack(anchor="center")
 
         tk.Label(
             header,
-            text="Entre com seu usuário para continuar",
+            text="Gestão simples e inteligente",
             bg=FUNDO,
             fg=TEXTO_SECUNDARIO,
             font=("Segoe UI", 10)
-        ).pack(
-            anchor="w",
-            pady=(4, 0)
-        )
+        ).pack(anchor="center", pady=(4, 0))
 
         card, conteudo = criar_card(
             self.janela,
-            370,
-            270
+            390,
+            285
         )
 
         card.pack(
-            padx=45,
-            pady=(25, 0)
+            padx=35,
+            pady=(15, 0)
         )
 
         formulario = tk.Frame(
@@ -763,7 +764,7 @@ class TelaLogin:
 
         tk.Label(
             formulario,
-            text="Usuário",
+            text="♙  Usuário",
             bg=BRANCO,
             fg=TEXTO,
             font=("Segoe UI", 9, "bold")
@@ -777,7 +778,10 @@ class TelaLogin:
             fg=TEXTO,
             relief="solid",
             bd=1,
-            highlightthickness=0,
+            highlightthickness=1,
+            highlightbackground=BORDA,
+            highlightcolor=design.palette()["focus"],
+            insertbackground=TEXTO,
             font=("Segoe UI", 10)
         )
 
@@ -794,7 +798,7 @@ class TelaLogin:
 
         tk.Label(
             formulario,
-            text="Senha",
+            text="▣  Senha",
             bg=BRANCO,
             fg=TEXTO,
             font=("Segoe UI", 9, "bold")
@@ -808,7 +812,10 @@ class TelaLogin:
             fg=TEXTO,
             relief="solid",
             bd=1,
-            highlightthickness=0,
+            highlightthickness=1,
+            highlightbackground=BORDA,
+            highlightcolor=design.palette()["focus"],
+            insertbackground=TEXTO,
             font=("Segoe UI", 10),
             show="*"
         )
@@ -821,7 +828,7 @@ class TelaLogin:
 
         btn = criar_botao(
             formulario,
-            "Entrar",
+            "Entrar  →",
             self.entrar,
             largura=314,
             altura=42,

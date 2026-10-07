@@ -2,8 +2,8 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, simpledialog
 
 from estoque_restaurante.app_state import marcar_alteracao
-from dados.restaurante.database import q, run
-from estoque_restaurante.utils import today
+from dados.restaurante.database import q, run, execute, commit, rollback
+from estoque_restaurante.utils import today, estoque_produto
 from estoque_restaurante.front import tree, buttons, form, sel, safe
 from estoque_restaurante.ui.notas_detalhes import nota_win
 from estoque_restaurante.xml_import import ler_xml_nfe, ler_xml_nfe_bytes
@@ -25,6 +25,7 @@ NOTA_F = [
 nt = None
 busca = None
 root_ref = None
+status_nfe = None
 
 
 # ---------------- UTILIDADES ---------------- #
@@ -101,144 +102,95 @@ def validar_destinatario(nota):
         )
 
 
+def conferir_nota(nota, itens, estabelecimento):
+    total_itens = len(itens)
+    msg = (
+        f"Confira os dados desta NF-e antes de importar no {estabelecimento}.\n\n"
+        f"Número: {nota.get('numero') or '-'}\n"
+        f"Fornecedor: {nota.get('fornecedor') or '-'}\n"
+        f"Destinatário: {nota.get('destinatario') or '-'}\n"
+        f"CNPJ destinatário: {normalizar_cnpj(nota.get('destinatario_cnpj'))}\n"
+        f"Data: {nota.get('data') or '-'}\n"
+        f"Itens: {total_itens}\n\n"
+        "Deseja importar esta nota?"
+    )
+    return messagebox.askyesno("Conferência da NF-e", msg, parent=root_ref)
+
+
 def salvar_nota_importada(nota, itens):
-    """
-    Salva uma NF-e e todos os seus itens no banco.
-
-    Retorna:
-        nid, total_itens, total_vinculados
-    """
-
-    chave = (
-        nota.get("chave") or ""
-    ).strip()
-
-    # ---------------- DUPLICIDADE ---------------- #
+    chave = (nota.get("chave") or "").strip()
 
     if chave:
-
         existente = q(
-            """
-            SELECT id, numero
-            FROM notas
-            WHERE chave=?
-            """,
+            "SELECT id, numero FROM notas WHERE chave=?",
             (chave,)
         )
-
         if existente:
-
             raise RuntimeError(
                 "Esta nota fiscal já foi importada.\n\n"
                 f"Nº da nota: {existente[0]['numero']}\n"
                 f"Chave: {chave}"
             )
 
-    # ---------------- CABEÇALHO ---------------- #
-
-    cur = run(
-        """
-        INSERT INTO notas(
-            numero,
-            fornecedor,
-            data,
-            chave
-        )
-        VALUES (?, ?, ?, ?)
-        """,
-        (
-            nota["numero"],
-            nota["fornecedor"],
-            nota["data"],
-            chave or None,
-        )
-    )
-
-    nid = cur.lastrowid
-
-    ok = 0
-
-    # ---------------- ITENS ---------------- #
-
-    for item in itens:
-
-        cod = item["codigo"]
-        desc = item["descricao"]
-        qtd = item["qtd"]
-        un = item["unidade"]
-        val = item["valor"]
-
-        vinc = q(
+    try:
+        cur = execute(
             """
-            SELECT *
-            FROM vinculos
-            WHERE fornecedor=?
-              AND cod_forn=?
+            INSERT INTO notas(numero, fornecedor, data, chave)
+            VALUES (?, ?, ?, ?)
             """,
             (
+                nota["numero"],
                 nota["fornecedor"],
-                cod
+                nota["data"],
+                chave or None,
             )
         )
+        nid = cur.lastrowid
+        ok = 0
 
-        if vinc:
+        for item in itens:
+            cod = item["codigo"]
+            desc = item["descricao"]
+            qtd = item["qtd"]
+            un = item["unidade"]
+            val = item["valor"]
 
-            pid = vinc[0]["produto_id"]
-            fator = vinc[0]["fator"]
-
-            ok += 1
-
-        else:
-
-            pid = None
-            fator = 1
-
-        # ---------------- CONVERSÃO ---------------- #
-
-        qtd_estoque = qtd * fator
-
-        # ---------------- VALOR UNITÁRIO ---------------- #
-
-        valor_unit = (
-            round(
-                val / qtd_estoque,
-                4
+            vinc = q(
+                """
+                SELECT * FROM vinculos
+                WHERE fornecedor=? AND cod_forn=?
+                """,
+                (nota["fornecedor"], cod)
             )
-            if qtd_estoque > 0
-            else 0
-        )
 
-        run(
-            """
-            INSERT INTO itens(
-                nota_id,
-                cod_forn,
-                descricao,
-                qtd,
-                unidade,
-                produto_id,
-                fator,
-                qtd_estoque,
-                valor_total,
-                valor_unit
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                nid,
-                cod,
-                desc,
-                qtd,
-                un,
-                pid,
-                fator,
-                qtd_estoque,
-                val,
-                valor_unit,
-            )
-        )
+            if vinc:
+                pid = vinc[0]["produto_id"]
+                fator = vinc[0]["fator"] or 1
+                ok += 1
+            else:
+                pid = None
+                fator = 1
 
-    return nid, len(itens), ok
+            qtd_estoque = qtd * fator
+            valor_unit = round(val / qtd_estoque, 4) if qtd_estoque > 0 else 0
+
+            execute(
+                """
+                INSERT INTO itens(
+                    nota_id, cod_forn, descricao, qtd, unidade,
+                    produto_id, fator, qtd_estoque, valor_total, valor_unit
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (nid, cod, desc, qtd, un, pid, fator, qtd_estoque, val, valor_unit)
+            )
+
+        commit()
+        return nid, len(itens), ok
+
+    except Exception:
+        rollback()
+        raise
 
 
 # ---------------- REFRESH ---------------- #
@@ -356,14 +308,29 @@ def nota_excluir():
     nid = sel(nt)
 
     if nid and messagebox.askyesno(
-        "Excluir",
-        "Excluir a nota e todos os itens dela?"
+        "Excluir nota",
+        "Excluir esta nota e todos os itens dela?\n\n"
+        "O estoque dos produtos vinculados será reduzido.",
+        parent=root_ref
     ):
-
-        run(
-            "DELETE FROM notas WHERE id=?",
+        itens = q(
+            "SELECT produto_id, SUM(COALESCE(qtd_estoque, 0)) AS qtd_estoque "
+            "FROM itens WHERE nota_id=? AND produto_id IS NOT NULL "
+            "GROUP BY produto_id",
             (nid,)
         )
+        for item in itens:
+            atual = estoque_produto(item["produto_id"])
+            if atual - (item["qtd_estoque"] or 0) < -0.0001:
+                messagebox.showerror(
+                    "Não é possível excluir",
+                    "Esta nota não pode ser excluída porque o estoque "
+                    "ficaria negativo. Existem saídas que usam esses produtos.",
+                    parent=root_ref
+                )
+                return
+
+        run("DELETE FROM notas WHERE id=?", (nid,))
 
         nota_refresh()
 
@@ -387,6 +354,10 @@ def nota_importar_xml():
 
     try:
 
+        if status_nfe is not None:
+            status_nfe.set("Lendo os dados da NF-e…")
+            root_ref.update_idletasks()
+
         nota, itens = ler_xml_nfe(
             path
         )
@@ -395,12 +366,21 @@ def nota_importar_xml():
             nota
         )
 
+        if status_nfe is not None:
+            status_nfe.set("NF-e encontrada. Confira os dados antes de importar.")
+
+        if not conferir_nota(nota, itens, "Restaurante"):
+            return
+
         nid, total, ok = salvar_nota_importada(
             nota,
             itens
         )
 
     except Exception as ex:
+
+        if status_nfe is not None:
+            status_nfe.set("Não foi possível ler esta NF-e.")
 
         messagebox.showerror(
             "Erro na importação",
@@ -480,6 +460,10 @@ def nota_consultar_chave():
 
     try:
 
+        if status_nfe is not None:
+            status_nfe.set("Consultando NF-e…")
+            root_ref.update_idletasks()
+
         # Consulta a API
         xml_bytes = consultar_nfe(
             chave
@@ -508,6 +492,12 @@ def nota_consultar_chave():
             nota
         )
 
+        if status_nfe is not None:
+            status_nfe.set("NF-e encontrada. Confira os dados antes de importar.")
+
+        if not conferir_nota(nota, itens, "Restaurante"):
+            return
+
         # Salva no banco do Restaurante
         nid, total, ok = salvar_nota_importada(
             nota,
@@ -515,6 +505,9 @@ def nota_consultar_chave():
         )
 
     except Exception as ex:
+
+        if status_nfe is not None:
+            status_nfe.set("Não foi possível consultar esta NF-e.")
 
         messagebox.showerror(
             "Erro na consulta",
@@ -548,7 +541,7 @@ def nota_consultar_chave():
 
 def criar_aba_notas(notebook, root):
 
-    global nt, busca, root_ref
+    global nt, busca, root_ref, status_nfe
 
     root_ref = root
 
@@ -558,7 +551,7 @@ def criar_aba_notas(notebook, root):
 
     notebook.add(
         aba,
-        text="Notas"
+        text="▤  Notas"
     )
 
     busca = tk.StringVar()
@@ -572,6 +565,9 @@ def criar_aba_notas(notebook, root):
         padx=6,
         pady=4
     )
+
+    status_nfe = tk.StringVar(value="Consulte pela chave ou importe um arquivo XML.")
+    ttk.Label(barra, textvariable=status_nfe, style="AppSubtitle.TLabel").pack(side="right", padx=8)
 
     ttk.Label(
         barra,

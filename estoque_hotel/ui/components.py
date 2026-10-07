@@ -3,44 +3,36 @@ import sqlite3
 from tkinter import ttk, messagebox
 import functools
 import traceback
+from ui import design_system as design
 
 
 # ============================================================
 # PALETA
 # ============================================================
 
-FUNDO = "#F6F8FB"
-BRANCO = "#FFFFFF"
-
-TEXTO = "#263238"
-TEXTO_SECUNDARIO = "#6B7280"
-
-AZUL = "#7AA7E8"
-AZUL_HOVER = "#6695DD"
-AZUL_CLARO = "#EAF2FF"
-
-VERDE = "#8BC9A3"
-VERDE_HOVER = "#72B98D"
+FUNDO = design.PALETA["bg"]
+BRANCO = design.PALETA["surface"]
+TEXTO = design.PALETA["text"]
+TEXTO_SECUNDARIO = design.PALETA["muted"]
+AZUL = design.PALETA["primary"]
+AZUL_HOVER = design.PALETA["primary_hover"]
+AZUL_CLARO = design.PALETA["primary_soft"]
+VERDE = design.PALETA["success"]
+VERDE_HOVER = "#15803D"
 VERDE_CLARO = "#EAF7EF"
-
-VERMELHO = "#E59A9A"
-VERMELHO_HOVER = "#D77F7F"
+VERMELHO = design.PALETA["danger"]
+VERMELHO_HOVER = design.PALETA["danger_hover"]
 VERMELHO_CLARO = "#FFF0F0"
-
-AMARELO = "#E8C878"
-AMARELO_HOVER = "#D9B65C"
+AMARELO = design.PALETA["warning"]
+AMARELO_HOVER = "#B45309"
 AMARELO_CLARO = "#FFF8E5"
-
-LILAS = "#B5A7E8"
-LILAS_HOVER = "#A496DB"
+LILAS = design.PALETA["info"]
+LILAS_HOVER = "#6D28D9"
 LILAS_CLARO = "#F1EEFF"
-
-CINZA = "#AAB4C0"
-CINZA_HOVER = "#929EAB"
-
-BORDA = "#E2E8F0"
-LINHA = "#F3F5F8"
-
+CINZA = "#94A3B8"
+CINZA_HOVER = "#64748B"
+BORDA = design.PALETA["border"]
+LINHA = design.PALETA["surface2"]
 
 # ============================================================
 # ESTILO
@@ -340,7 +332,7 @@ def configurar_estilo():
     style.map(
         "App.Treeview",
         background=[
-            ("selected", "#DCEAFF")
+            ("selected", design.PALETA["selection"])
         ],
         foreground=[
             ("selected", TEXTO)
@@ -350,7 +342,7 @@ def configurar_estilo():
     style.map(
         "App.Treeview.Heading",
         background=[
-            ("active", "#DDEAFF")
+            ("active", design.PALETA["selection"])
         ]
     )
 

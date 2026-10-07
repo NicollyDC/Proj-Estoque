@@ -4,6 +4,7 @@ from tkinter import ttk, messagebox, simpledialog
 from dados.usuarios.database import q, run
 from login import gerar_senha, usuario_valido, normalizar_usuario
 from sessao import sessao
+from ui import design_system as design
 
 
 # ============================================================
@@ -126,6 +127,16 @@ def criar_botao(
 
     raio = 9
 
+    def aparencia():
+        p = design.palette()
+        if texto in {"Ativar", "Criar usuário"}:
+            return p["success"], p["success"], p["button_text"], "success"
+        if texto == "Desativar":
+            return p["danger_action"], p["danger_hover"], p["danger_button_text"], "danger"
+        if texto == "+ Novo usuário":
+            return p["primary"], p["primary_hover"], p["button_text"], "primary"
+        return p["surface"], p["surface2"], p["text"], "neutral"
+
     def desenhar(cor_atual):
         canvas.delete("all")
 
@@ -139,24 +150,29 @@ def criar_botao(
             cor_atual
         )
 
+        _, _, _, tipo = aparencia()
+        for item in canvas.find_withtag("botao"):
+            canvas.addtag_withtag(f"theme-{tipo}", item)
+
         canvas.create_text(
             largura / 2,
             altura / 2,
             text=texto,
-            fill=texto_cor,
-            font=("Segoe UI", 9, "bold")
+            fill=aparencia()[2],
+            font=("Segoe UI", 9, "bold"),
+            tags=(f"button-label-{aparencia()[3]}",)
         )
 
     desenhar(cor)
 
     canvas.bind(
         "<Enter>",
-        lambda event: desenhar(hover)
+        lambda event: desenhar(aparencia()[1])
     )
 
     canvas.bind(
         "<Leave>",
-        lambda event: desenhar(cor)
+        lambda event: desenhar(aparencia()[0])
     )
 
     canvas.bind(
@@ -226,6 +242,7 @@ class JanelaUsuarios:
         self.janela.grab_set()
 
         self.criar_interface()
+        design.configure_styles()
         self.carregar_usuarios()
 
         self.centralizar()
@@ -823,6 +840,7 @@ class JanelaNovoUsuario:
         self.janela.grab_set()
 
         self.criar_interface()
+        design.configure_styles()
 
         self.centralizar()
 
@@ -1002,7 +1020,10 @@ class JanelaNovoUsuario:
             fg=TEXTO,
             relief="solid",
             bd=1,
-            highlightthickness=0,
+            highlightthickness=1,
+            highlightbackground=BORDA,
+            highlightcolor=design.palette()["focus"],
+            insertbackground=TEXTO,
             font=("Segoe UI", 10),
             show=show or ""
         )

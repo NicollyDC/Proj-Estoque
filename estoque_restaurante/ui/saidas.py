@@ -2,8 +2,8 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 
 from dados.restaurante.database import q, run
-from estoque_restaurante.utils import fmt, now
-from estoque_restaurante.front import tree, buttons, sel, safe
+from estoque_restaurante.utils import fmt, now, TIPOS
+from estoque_restaurante.front import tree, buttons, form, sel, safe
 from estoque_restaurante.ui.saida_detalhes import saida_win
 
 st = None
@@ -46,7 +46,32 @@ def sai_refresh():
 
 @safe
 def nova_saida():
-    """Cria o cabeçalho da saída e abre os detalhes."""
+    r = form(
+        root_ref,
+        "Nova saída",
+        [
+            ("responsavel", "Responsável pela retirada", "entry", None),
+            ("tipo", "Tipo da saída", "combo_ro", TIPOS),
+        ],
+        {"tipo": "uso e consumo"},
+    )
+
+    if not r:
+        return
+
+    responsavel = (r.get("responsavel") or "").strip()
+    tipo = r.get("tipo") or "uso e consumo"
+
+    if not responsavel:
+        messagebox.showwarning(
+            "Nova saída",
+            "Informe o responsável pela retirada."
+        )
+        return
+
+    if tipo not in TIPOS:
+        messagebox.showwarning("Nova saída", "Selecione o tipo da saída.")
+        return
 
     cur = run("""
         INSERT INTO saidas(
@@ -56,8 +81,8 @@ def nova_saida():
         )
         VALUES (?, ?, ?)
     """, (
-        "",
-        "uso e consumo",
+        responsavel,
+        tipo,
         now(),
     ))
 
@@ -104,7 +129,7 @@ def criar_aba_saidas(notebook, root):
     root_ref = root
 
     aba = ttk.Frame(notebook)
-    notebook.add(aba, text="Saídas")
+    notebook.add(aba, text="↗  Saídas")
 
     st = tree(
         aba,

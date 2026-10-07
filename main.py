@@ -4,22 +4,21 @@ from tkinter import ttk
 from login import iniciar_login
 from sessao import sessao
 from ui.usuarios import JanelaUsuarios
+from ui import design_system as design
 
 
 # ============================================================
 # CORES
 # ============================================================
 
-FUNDO = "#F4F6F8"
-BRANCO = "#FFFFFF"
-TEXTO = "#1F2937"
-TEXTO_SECUNDARIO = "#6B7280"
-BORDA = "#E5E7EB"
-
-PRINCIPAL = "#2563EB"
-PRINCIPAL_HOVER = "#1D4ED8"
-
-PERIGO = "#DC2626"
+FUNDO = design.PALETA["bg"]
+BRANCO = design.PALETA["surface"]
+TEXTO = design.PALETA["text"]
+TEXTO_SECUNDARIO = design.PALETA["muted"]
+BORDA = design.PALETA["border"]
+PRINCIPAL = design.PALETA["primary"]
+PRINCIPAL_HOVER = design.PALETA["primary_hover"]
+PERIGO = design.PALETA["danger"]
 
 
 # ============================================================
@@ -138,19 +137,26 @@ def criar_botao_arredondado(
             altura / 2,
             text=texto,
             fill=cor_texto,
-            font=fonte
+            font=fonte,
+            tags=("button-label-neutral" if cor == BRANCO else "button-label-primary",)
         )
 
     desenhar(cor)
 
     canvas.bind(
         "<Enter>",
-        lambda event: desenhar(cor_hover)
+        lambda event: desenhar(
+            design.palette()["surface2"] if cor == BRANCO
+            else design.palette()["primary_hover"]
+        )
     )
 
     canvas.bind(
         "<Leave>",
-        lambda event: desenhar(cor)
+        lambda event: desenhar(
+            design.palette()["surface"] if cor == BRANCO
+            else design.palette()["primary"]
+        )
     )
 
     canvas.bind(
@@ -284,9 +290,10 @@ def fechar():
 
 root = tk.Tk()
 
-root.title("Controle de Estoque")
+root.title("Proj-Estoque")
 root.geometry("840x570")
-root.resizable(False, False)
+root.minsize(840, 570)
+root.resizable(True, True)
 root.configure(bg=FUNDO)
 
 
@@ -296,6 +303,7 @@ root.configure(bg=FUNDO)
 
 style = ttk.Style()
 style.theme_use("clam")
+design.configure_styles()
 
 style.configure(
     "TFrame",
@@ -366,7 +374,7 @@ header.pack(
 
 titulo = ttk.Label(
     header,
-    text="Controle de Estoque",
+    text="Proj-Estoque",
     style="Title.TLabel"
 )
 
@@ -382,7 +390,6 @@ subtitulo.pack(
     anchor="w",
     pady=(3, 0)
 )
-
 
 # ============================================================
 # USUÁRIO
@@ -475,7 +482,7 @@ card_hotel.grid(
 
 titulo_hotel = ttk.Label(
     conteudo_hotel,
-    text="🏨  Hotel",
+    text="⌂  Hotel",
     style="CardTitle.TLabel"
 )
 
@@ -498,7 +505,7 @@ descricao_hotel.pack(
 
 btn_hotel = criar_botao_arredondado(
     conteudo_hotel,
-    "Acessar hotel",
+    "Acessar hotel  →",
     abrir_hotel,
     largura=325,
     altura=42,
@@ -530,7 +537,7 @@ card_restaurante.grid(
 
 titulo_restaurante = ttk.Label(
     conteudo_restaurante,
-    text="🍽️  Restaurante",
+    text="▦  Restaurante",
     style="CardTitle.TLabel"
 )
 
@@ -553,7 +560,7 @@ descricao_restaurante.pack(
 
 btn_restaurante = criar_botao_arredondado(
     conteudo_restaurante,
-    "Acessar restaurante",
+    "Acessar restaurante  →",
     abrir_restaurante,
     largura=325,
     altura=42,
@@ -580,7 +587,7 @@ frame_admin.pack(
 
 btn_usuarios = criar_botao_arredondado(
     frame_admin,
-    "👥  Gerenciar usuários",
+    "♙  Gerenciar usuários",
     abrir_usuarios,
     largura=750,
     altura=42,

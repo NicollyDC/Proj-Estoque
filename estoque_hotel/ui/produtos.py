@@ -29,6 +29,7 @@ PROD_F = [
 
 pt = None
 busca_produto = None
+estado_vazio = None
 
 
 # ============================================================
@@ -82,6 +83,12 @@ def prod_refresh():
                 "ESTOQUE MÍNIMO!" if baixo else "",
             ),
         )
+
+    if estado_vazio is not None:
+        if pt.get_children():
+            estado_vazio.place_forget()
+        else:
+            estado_vazio.place(relx=0.5, rely=0.5, anchor="center")
 
 
 # ============================================================
@@ -275,14 +282,22 @@ def prod_del():
 def criar_aba_produtos(notebook, root):
     """Cria a aba Produtos dentro do Notebook."""
 
-    global pt, busca_produto
+    global pt, busca_produto, estado_vazio
 
     aba = ttk.Frame(notebook)
 
     notebook.add(
         aba,
-        text="Produtos / Estoque"
+        text="▦  Produtos"
     )
+
+    cabecalho = ttk.Frame(aba)
+    cabecalho.pack(fill="x", padx=18, pady=(14, 4))
+    texto = ttk.Frame(cabecalho)
+    texto.pack(side="left", fill="x", expand=True)
+    ttk.Label(texto, text="Produtos e estoque", style="AppTitle.TLabel").pack(anchor="w")
+    ttk.Label(texto, text="Consulte, cadastre e atualize os produtos deste estabelecimento.", style="AppSubtitle.TLabel").pack(anchor="w", pady=(2, 0))
+    ttk.Button(cabecalho, text="+ Novo produto", command=lambda: prod_edit(root, True), style="Primario.TButton").pack(side="right", padx=(12, 0))
 
     # ========================================================
     # PESQUISA
@@ -290,15 +305,11 @@ def criar_aba_produtos(notebook, root):
 
     busca_frame = ttk.Frame(aba)
 
-    busca_frame.pack(
-        fill="x",
-        padx=10,
-        pady=(10, 0)
-    )
+    busca_frame.pack(fill="x", padx=18, pady=(8, 0))
 
     ttk.Label(
     busca_frame,
-    text="Pesquisar:",
+    text="⌕  Buscar produto:",
     style="App.TLabel"
     ).pack(
         side="left",
@@ -315,7 +326,7 @@ def criar_aba_produtos(notebook, root):
     )
 
     busca_entry.pack(
-        side="left"
+        side="left", fill="x", expand=True
     )
 
     ttk.Button(
@@ -346,6 +357,11 @@ def criar_aba_produtos(notebook, root):
         ],
     )
 
+    estado_vazio = ttk.Frame(pt.master, padding=18)
+    ttk.Label(estado_vazio, text="Nenhum produto encontrado", style="AppTitle.TLabel").pack(pady=(0, 4))
+    ttk.Label(estado_vazio, text="Cadastre um produto ou ajuste a busca para ver resultados.", style="AppSubtitle.TLabel").pack(pady=(0, 12))
+    ttk.Button(estado_vazio, text="Cadastrar primeiro produto", command=lambda: prod_edit(root, True), style="Primario.TButton").pack()
+
     pt.tag_configure(
         "low",
         background="#FFF0F0"
@@ -358,10 +374,6 @@ def criar_aba_produtos(notebook, root):
     buttons(
         aba,
         [
-            (
-                "Novo produto",
-                lambda: prod_edit(root, True)
-            ),
             (
                 "Editar produto",
                 lambda: prod_edit(root)
