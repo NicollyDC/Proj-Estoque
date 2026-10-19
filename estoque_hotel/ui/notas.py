@@ -3,6 +3,7 @@ from tkinter import ttk, messagebox, filedialog, simpledialog
 
 from estoque_hotel.app_state import marcar_alteracao
 from dados.hotel.database import q, run, execute, commit, rollback
+from dados.estoque import calcular_quantidade_estoque, calcular_valor_unitario_estoque
 from estoque_hotel.utils import today, estoque_produto
 
 from estoque_hotel.front import (
@@ -36,7 +37,7 @@ NOTA_F = [
     ("numero", "Nº da nota", "entry", None),
     ("fornecedor", "Fornecedor", "entry", None),
     ("data", "Data (AAAA-MM-DD)", "entry", None),
-    ("faturada", "Faturada?", "check", None),
+    ("faturada", "Faturada", "check", None),
     ("data_fat", "Data do faturamento", "entry", None),
 ]
 
@@ -81,6 +82,15 @@ def normalizar_cnpj(cnpj):
     return "".join(
         c for c in str(cnpj)
         if c.isdigit()
+    )
+
+
+def mensagem_erro_operacao(erro):
+    if isinstance(erro, (ValueError, RuntimeError)):
+        return str(erro)
+    return (
+        "Não foi possível concluir a operação com esta NF-e. "
+        "Confira os dados e tente novamente. Se o problema continuar, contate o suporte."
     )
 
 
@@ -192,8 +202,8 @@ def salvar_nota_importada(nota, itens):
                 pid = None
                 fator = 1
 
-            qtd_estoque = qtd * fator
-            valor_unit = round(val / qtd_estoque, 4) if qtd_estoque > 0 else 0
+            qtd_estoque = calcular_quantidade_estoque(qtd, fator)
+            valor_unit = calcular_valor_unitario_estoque(val, qtd_estoque)
 
             execute(
                 """
@@ -252,10 +262,9 @@ def nota_refresh():
     ):
 
         fat = (
-            "Sim - "
-            + (r["data_faturamento"] or "")
+            f"Faturada em {r['data_faturamento'] or '-'}"
             if r["faturada"]
-            else "Não"
+            else "Não faturada"
         )
 
         nt.insert(
@@ -412,7 +421,7 @@ def nota_importar_xml():
 
         messagebox.showerror(
             "Erro na importação",
-            str(ex)
+            mensagem_erro_operacao(ex)
         )
 
         return
@@ -423,9 +432,9 @@ def nota_importar_xml():
 
     messagebox.showinfo(
         "Importação concluída",
-        f"{total} itens importados.\n"
-        f"{ok} vinculados automaticamente.\n"
-        f"{total - ok} precisam de vínculo."
+        f"{total} itens foram importados.\n"
+        f"Itens vinculados automaticamente: {ok}.\n"
+        f"Itens que precisam de vínculo: {total - ok}."
     )
 
     nota_win(
@@ -553,7 +562,7 @@ def nota_consultar_chave():
 
         messagebox.showerror(
             "Erro na consulta",
-            str(ex)
+            mensagem_erro_operacao(ex)
         )
 
         return
@@ -568,8 +577,8 @@ def nota_consultar_chave():
         f"Fornecedor: {nota['fornecedor']}\n"
         f"Data: {nota['data']}\n"
         f"Itens: {total}\n"
-        f"Vinculados automaticamente: {ok}\n"
-        f"Sem vínculo: {total - ok}"
+        f"Itens vinculados automaticamente: {ok}\n"
+        f"Itens sem vínculo: {total - ok}"
     )
 
     nota_win(
@@ -667,10 +676,10 @@ def criar_aba_notas(notebook, root):
     nt = tree(
         aba,
         [
-            ("numero", "Nº nota", 120),
+            ("numero", "Nº da nota", 120),
             ("forn", "Fornecedor", 250),
             ("data", "Data", 100),
-            ("fat", "Faturada", 160),
+            ("fat", "Faturamento", 160),
             ("itens", "Itens", 60),
             ("sem", "Sem vínculo", 90),
         ]

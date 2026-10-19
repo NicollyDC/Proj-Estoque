@@ -255,7 +255,7 @@ def separador(parent):
     return tk.Frame(parent, bg=LINHA, height=1)
 
 
-def form(parent, title, fields, values=None):
+def form(parent, title, fields, values=None, extra_content=None):
     values = values or {}
 
     win = tk.Toplevel(parent)
@@ -327,6 +327,9 @@ def form(parent, title, fields, values=None):
         widget.grid(row=i, column=1, padx=0, pady=6, sticky="ew")
         variaveis[key] = var
 
+    if extra_content is not None:
+        extra_content(area, len(fields))
+
     rodape = tk.Frame(win, bg=FUNDO, highlightbackground=BORDA, highlightthickness=1)
     rodape.pack(fill="x", side="bottom")
 
@@ -369,15 +372,18 @@ def tree(parent, cols):
         style="App.Treeview"
     )
 
-    for key, title, width in cols:
-        tabela.heading(key, text=title)
-        numeric = key.lower() in {"est", "min", "qtd", "quantidade", "valor", "total", "subtotal", "vu", "itens"}
-        tabela.column(key, width=width, minwidth=50, anchor="e" if numeric else "w")
-
     barra = ttk.Scrollbar(frame, orient="vertical", command=tabela.yview, style="App.Vertical.TScrollbar")
-    tabela.configure(yscrollcommand=barra.set)
-    tabela.pack(side="left", fill="both", expand=True)
-    barra.pack(side="right", fill="y")
+    barra_horizontal = ttk.Scrollbar(frame, orient="horizontal", command=tabela.xview)
+    tabela.configure(yscrollcommand=barra.set, xscrollcommand=barra_horizontal.set)
+    for key, title, _width in cols:
+        tabela.heading(key, text=title)
+    design.configurar_treeview_responsivo(
+        tabela,
+        frame,
+        [(key, width) for key, _title, width in cols],
+        barra,
+        barra_horizontal,
+    )
     return tabela
 
 

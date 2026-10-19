@@ -2,11 +2,12 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 
 from dados.restaurante.database import q, run
+from dados.estoque import calcular_quantidade_estoque
 from estoque_restaurante.utils import today, fmt, num
 from estoque_restaurante.front import tree, buttons, form, sel, safe
 
 
-ITEM_HELP = "Qtd. no estoque (vazio = qtd × fator)"
+ITEM_HELP = "Quantidade em estoque (vazio = qtd. × fator)"
 
 PROD_F = [
     ("codigo", "Código", "entry", None),
@@ -38,12 +39,12 @@ def nota_win(root, nid, on_close=None):
         [
             ("cod", "Cód. fornecedor", 110),
             ("desc", "Descrição", 230),
-            ("qtd", "Qtd nota", 70),
-            ("un", "Un.", 60),
+            ("qtd", "Qtd. na nota", 90),
+            ("un", "Unidade", 75),
             ("prod", "Produto", 240),
             ("fator", "Fator", 60),
-            ("est", "Qtd estoque", 80),
-            ("val", "Valor", 80),
+            ("est", "Quantidade em estoque", 155),
+            ("val", "Valor total", 100),
         ],
     )
 
@@ -54,9 +55,9 @@ def nota_win(root, nid, on_close=None):
         )[0]
 
         fat = (
-            f"FATURADA em {n['data_faturamento'] or '-'}"
+            f"Faturada em {n['data_faturamento'] or '-'}"
             if n["faturada"]
-            else "NÃO faturada"
+            else "Não faturada"
         )
 
         head.config(
@@ -225,7 +226,7 @@ def nota_win(root, nid, on_close=None):
 
         estoque = num(
             r["qtd_estoque"],
-            qtd * fator
+            calcular_quantidade_estoque(qtd, fator)
         )
 
         dados = (
@@ -336,7 +337,7 @@ def nota_win(root, nid, on_close=None):
             """,
             (
                 cur.lastrowid,
-                (it["qtd"] or 0) * fator,
+                calcular_quantidade_estoque(it["qtd"], fator),
                 iid,
             ),
         )

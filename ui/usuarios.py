@@ -41,25 +41,25 @@ def desenhar_retangulo_arredondado(
     raio,
     preenchimento
 ):
-    canvas.create_rectangle(
+    itens = [canvas.create_rectangle(
         x1 + raio,
         y1,
         x2 - raio,
         y2,
         fill=preenchimento,
         outline=""
-    )
+    )]
 
-    canvas.create_rectangle(
+    itens.append(canvas.create_rectangle(
         x1,
         y1 + raio,
         x2,
         y2 - raio,
         fill=preenchimento,
         outline=""
-    )
+    ))
 
-    canvas.create_arc(
+    itens.append(canvas.create_arc(
         x1,
         y1,
         x1 + raio * 2,
@@ -68,9 +68,9 @@ def desenhar_retangulo_arredondado(
         extent=90,
         fill=preenchimento,
         outline=""
-    )
+    ))
 
-    canvas.create_arc(
+    itens.append(canvas.create_arc(
         x2 - raio * 2,
         y1,
         x2,
@@ -79,9 +79,9 @@ def desenhar_retangulo_arredondado(
         extent=90,
         fill=preenchimento,
         outline=""
-    )
+    ))
 
-    canvas.create_arc(
+    itens.append(canvas.create_arc(
         x1,
         y2 - raio * 2,
         x1 + raio * 2,
@@ -90,9 +90,9 @@ def desenhar_retangulo_arredondado(
         extent=90,
         fill=preenchimento,
         outline=""
-    )
+    ))
 
-    canvas.create_arc(
+    itens.append(canvas.create_arc(
         x2 - raio * 2,
         y2 - raio * 2,
         x2,
@@ -101,7 +101,8 @@ def desenhar_retangulo_arredondado(
         extent=90,
         fill=preenchimento,
         outline=""
-    )
+    ))
+    return itens
 
 
 def criar_botao(
@@ -194,7 +195,7 @@ def criar_card(parent, largura, altura, raio=14):
         bd=0
     )
 
-    desenhar_retangulo_arredondado(
+    itens = desenhar_retangulo_arredondado(
         canvas,
         1,
         1,
@@ -209,13 +210,32 @@ def criar_card(parent, largura, altura, raio=14):
         bg=BRANCO
     )
 
-    canvas.create_window(
+    for item in itens:
+        canvas.addtag_withtag("card-background", item)
+
+    janela_conteudo = canvas.create_window(
         largura / 2,
         altura / 2,
         window=conteudo,
         width=largura - 4,
         height=altura - 4
     )
+
+    def redimensionar(event):
+        canvas.delete("card-background")
+        itens_fundo = desenhar_retangulo_arredondado(
+            canvas, 1, 1, event.width - 1, event.height - 1, raio, BRANCO
+        )
+        for item in itens_fundo:
+            canvas.addtag_withtag("card-background", item)
+        canvas.coords(janela_conteudo, event.width / 2, event.height / 2)
+        canvas.itemconfigure(
+            janela_conteudo,
+            width=max(1, event.width - 4),
+            height=max(1, event.height - 4),
+        )
+
+    canvas.bind("<Configure>", redimensionar, add="+")
 
     return canvas, conteudo
 
@@ -232,7 +252,8 @@ class JanelaUsuarios:
 
         self.janela.title("Gerenciar usuários")
         self.janela.geometry("780x520")
-        self.janela.resizable(False, False)
+        self.janela.resizable(True, True)
+        self.janela.minsize(640, 460)
 
         self.janela.configure(
             bg=FUNDO
@@ -314,6 +335,8 @@ class JanelaUsuarios:
         )
 
         card.pack(
+            fill="both",
+            expand=True,
             padx=35,
             pady=(20, 15)
         )
@@ -386,41 +409,34 @@ class JanelaUsuarios:
             "status": ("Status", 90, "center")
         }
 
-        for coluna, (
-            titulo,
-            largura,
-            ancora
-        ) in configuracoes.items():
+        for coluna, (titulo, _largura, _ancora) in configuracoes.items():
 
             self.tabela.heading(
                 coluna,
                 text=titulo
             )
 
-            self.tabela.column(
-                coluna,
-                width=largura,
-                anchor=ancora
-            )
-
-        self.tabela.pack(
-            side="left",
-            fill="both",
-            expand=True
-        )
-
         scrollbar = ttk.Scrollbar(
             tabela_frame,
+            orient="vertical",
             command=self.tabela.yview
         )
-
-        scrollbar.pack(
-            side="right",
-            fill="y"
+        scrollbar_horizontal = ttk.Scrollbar(
+            tabela_frame,
+            orient="horizontal",
+            command=self.tabela.xview
         )
-
         self.tabela.configure(
-            yscrollcommand=scrollbar.set
+            yscrollcommand=scrollbar.set,
+            xscrollcommand=scrollbar_horizontal.set
+        )
+        design.configurar_treeview_responsivo(
+            self.tabela,
+            tabela_frame,
+            [(coluna, valores[1], 42 if coluna == "id" else max(60, int(valores[1] * 0.5)))
+             for coluna, valores in configuracoes.items()],
+            scrollbar,
+            scrollbar_horizontal,
         )
 
         # Botões
@@ -623,7 +639,7 @@ class JanelaUsuarios:
 
             messagebox.showinfo(
                 "Usuário",
-                "Esse usuário já está inativo.",
+                "Este usuário já está inativo.",
                 parent=self.janela
             )
 
@@ -644,7 +660,7 @@ class JanelaUsuarios:
 
                 messagebox.showwarning(
                     "Operação não permitida",
-                    "O sistema precisa possuir pelo menos "
+                    "O sistema precisa ter pelo menos "
                     "um administrador ativo.",
                     parent=self.janela
                 )
@@ -695,7 +711,7 @@ class JanelaUsuarios:
 
             messagebox.showinfo(
                 "Usuário",
-                "Esse usuário já está ativo.",
+                "Este usuário já está ativo.",
                 parent=self.janela
             )
 
@@ -766,7 +782,7 @@ class JanelaUsuarios:
 
             messagebox.showwarning(
                 "Senha",
-                "A senha deve possuir pelo menos 6 caracteres.",
+                "A senha deve ter pelo menos 6 caracteres.",
                 parent=self.janela
             )
 
@@ -1102,8 +1118,8 @@ class JanelaNovoUsuario:
 
             messagebox.showwarning(
                 "Usuário inválido",
-                "Use de 3 a 30 caracteres, apenas letras, "
-                "números, ponto ou _.",
+                "Use de 3 a 30 caracteres: letras, números, "
+                "ponto (.) ou sublinhado (_).",
                 parent=self.janela
             )
 
@@ -1113,7 +1129,7 @@ class JanelaNovoUsuario:
 
             messagebox.showwarning(
                 "Senha",
-                "A senha deve possuir pelo menos 6 caracteres.",
+                "A senha deve ter pelo menos 6 caracteres.",
                 parent=self.janela
             )
 
@@ -1132,7 +1148,7 @@ class JanelaNovoUsuario:
 
             messagebox.showerror(
                 "Usuário existente",
-                "Esse usuário já está cadastrado.",
+                "Este usuário já está cadastrado.",
                 parent=self.janela
             )
 

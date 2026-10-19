@@ -3,6 +3,13 @@ from tkinter import ttk, messagebox
 from ui import design_system as design
 
 from estoque_hotel.app_state import salvar
+from estoque_hotel.utils import ESTOQUE_SQL, fmt
+from ui.design_system import dinheiro
+from dados.hotel.database import q, sync_tracker
+from ui.dashboard import criar_aba_dashboard
+from ui.sidebar import criar_sidebar
+from ui.usuarios import JanelaUsuarios
+from sessao import sessao
 
 from estoque_hotel.ui.notas import (
     criar_aba_notas
@@ -22,9 +29,6 @@ from estoque_hotel.ui.relatorios import (
 
 from estoque_hotel.front import (
     FUNDO,
-    BRANCO,
-    BORDA,
-    criar_botao_arredondado
 )
 
 
@@ -77,85 +81,8 @@ def criar_janela_hotel(painel, ao_fechar=None):
         if ao_fechar:
             ao_fechar()
 
-    # ========================================================
-    # CABEÇALHO
-    # ========================================================
-
-    cabecalho = tk.Frame(
-        root,
-        bg=FUNDO
-    )
-
-    cabecalho.pack(
-        fill="x",
-        padx=28,
-        pady=(24, 12)
-    )
-
-    # --------------------------------------------------------
-    # LADO ESQUERDO
-    # --------------------------------------------------------
-
-    esquerda = tk.Frame(
-        cabecalho,
-        bg=FUNDO
-    )
-
-    esquerda.pack(
-        side="left",
-        fill="x",
-        expand=True
-    )
-
-    ttk.Label(
-        esquerda,
-        text="⌂  Estoque Hotel",
-        style="AppTitle.TLabel"
-    ).pack(
-        anchor="w"
-    )
-
-    ttk.Label(
-        esquerda,
-        text="Hotel",
-        style="AppSubtitle.TLabel"
-    ).pack(
-        anchor="w"
-    )
-
-    # --------------------------------------------------------
-    # LADO DIREITO
-    # --------------------------------------------------------
-
-    direita = tk.Frame(
-        cabecalho,
-        bg=FUNDO
-    )
-
-    direita.pack(
-        side="right"
-    )
-
-    criar_botao_arredondado(
-        direita,
-        "↩  Voltar ao painel",
-        voltar_painel,
-        largura=170,
-        altura=40
-    ).pack(side="right")
-
-    # ========================================================
-    # ÁREA PRINCIPAL
-    # ========================================================
-
     area = tk.Frame(root, bg=FUNDO)
-
-    area.pack(
-        fill="both",
-        expand=True,
-        padx=28,
-        pady=(4, 18)
-    )
+    area.pack(fill="both", expand=True)
 
     # ========================================================
     # ABAS
@@ -166,12 +93,19 @@ def criar_janela_hotel(painel, ao_fechar=None):
         style="Hotel.TNotebook"
     )
 
-    notebook.pack(
-        fill="both",
-        expand=True,
-        padx=0,
-        pady=0
+    criar_sidebar(
+        area, notebook, "Hotel", sessao.nome, sessao.perfil, voltar_painel,
+        (lambda: JanelaUsuarios(root)) if sessao.tem_permissao("usuarios.visualizar") else None,
+        "Hotel.TNotebook",
+        sync_tracker,
     )
+
+    notebook.pack(side="left", fill="both", expand=True, padx=18, pady=16)
+
+    # ========================================================
+    # VISÃO GERAL
+    # ========================================================
+    criar_aba_dashboard(notebook, q, ESTOQUE_SQL, dinheiro, fmt)
 
     # ========================================================
     # NOTAS

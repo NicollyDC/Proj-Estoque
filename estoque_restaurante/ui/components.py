@@ -407,7 +407,7 @@ def form(parent, title, fields, values=None):
 
     tk.Label(
         cabecalho,
-        text="Preencha as informações abaixo.",
+        text="Preencha as informações e clique em Salvar. Use Cancelar para voltar sem gravar.",
         bg=BRANCO,
         fg=TEXTO_SECUNDARIO,
         font=("Segoe UI", 9)
@@ -604,19 +604,13 @@ def tree(parent, cols):
         style="App.Treeview"
     )
 
-    for key, title, width in cols:
+    for key, title, _width in cols:
 
         tabela.heading(
             key,
             text=title
         )
 
-        tabela.column(
-            key,
-            width=width,
-            minwidth=50,
-            anchor="w"
-        )
 
     barra = ttk.Scrollbar(
         frame,
@@ -625,19 +619,21 @@ def tree(parent, cols):
         style="App.Vertical.TScrollbar"
     )
 
+    barra_horizontal = ttk.Scrollbar(
+        frame,
+        orient="horizontal",
+        command=tabela.xview
+    )
     tabela.configure(
-        yscrollcommand=barra.set
+        yscrollcommand=barra.set,
+        xscrollcommand=barra_horizontal.set
     )
-
-    tabela.pack(
-        side="left",
-        fill="both",
-        expand=True
-    )
-
-    barra.pack(
-        side="right",
-        fill="y"
+    design.configurar_treeview_responsivo(
+        tabela,
+        frame,
+        [(key, width) for key, _title, width in cols],
+        barra,
+        barra_horizontal,
     )
 
     return tabela
@@ -807,7 +803,7 @@ def sel(treeview):
 
         messagebox.showinfo(
             "Atenção",
-            "Selecione uma linha primeiro."
+                "Selecione uma linha da lista primeiro."
         )
 
         return None
@@ -835,20 +831,20 @@ def safe(func):
                 str(e)
             )
 
-        except sqlite3.IntegrityError as e:
+        except sqlite3.IntegrityError:
 
             messagebox.showerror(
-                "Banco de Dados",
-                str(e)
+                "Não foi possível concluir",
+                "Os dados informados não puderam ser salvos. Confira as informações e tente novamente."
             )
 
-        except Exception as e:
+        except Exception:
 
             traceback.print_exc()
 
             messagebox.showerror(
-                "Erro inesperado",
-                str(e)
+                "Algo deu errado",
+                "Não foi possível concluir esta ação. Tente novamente. Se o problema continuar, contate o suporte."
             )
 
     return wrapper

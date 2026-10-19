@@ -1,5 +1,6 @@
 import sqlite3
 from pathlib import Path
+from dados.sync import SyncTracker
 
 
 # ---------------- BANCO DE DADOS ---------------- #
@@ -76,6 +77,19 @@ CREATE TABLE IF NOT EXISTS itens_saida(
     valor_unit REAL,
     subtotal REAL
 );
+
+CREATE TABLE IF NOT EXISTS ajustes_estoque(
+    id INTEGER PRIMARY KEY,
+    produto_id INTEGER NOT NULL REFERENCES produtos(id),
+    estoque_anterior REAL NOT NULL,
+    estoque_novo REAL NOT NULL,
+    diferenca REAL NOT NULL,
+    valor_unit REAL NOT NULL DEFAULT 0,
+    data_hora TEXT NOT NULL,
+    responsavel TEXT NOT NULL,
+    motivo TEXT NOT NULL,
+    observacao TEXT
+);
 """)
 
 
@@ -129,7 +143,13 @@ con.execute("""
     WHERE chave IS NOT NULL AND chave != ''
 """)
 
+con.execute("""
+    CREATE INDEX IF NOT EXISTS idx_ajustes_estoque_produto_data
+    ON ajustes_estoque(produto_id, data_hora)
+""")
+
 con.commit()
+sync_tracker = SyncTracker(con)
 
 
 # ---------------- FUNÇÕES ---------------- #
@@ -139,7 +159,10 @@ def q(sql, parametros=()):
 
 
 def execute(sql, parametros=()):
-    return con.execute(sql, parametros)
+    cur = con.execute(sql, parametros)
+    if cur.rowcount > 0:
+        sync_tracker.record_sql(sql, parametros, cur.lastrowid)
+    return cur
 
 
 def commit():
@@ -152,5 +175,7 @@ def rollback():
 
 def run(sql, parametros=()):
     cur = con.execute(sql, parametros)
+    if cur.rowcount > 0:
+        sync_tracker.record_sql(sql, parametros, cur.lastrowid)
     con.commit()
     return cur

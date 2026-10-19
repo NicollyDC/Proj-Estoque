@@ -28,6 +28,83 @@ def filtrar_opcoes(opcoes, busca):
     return [opcao for opcao in opcoes if termo in str(opcao).casefold()]
 
 
+def dinheiro(valor):
+    """Formata valores em reais com separadores brasileiros."""
+    texto = f"{float(valor or 0):,.2f}"
+    return "R$ " + texto.replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def configurar_treeview_responsivo(tabela, container, colunas, barra_vertical=None,
+                                  barra_horizontal=None, padx=0, pady=0):
+    """Centraliza cabeçalhos e células e adapta as colunas à largura disponível."""
+    especificacoes = []
+    for coluna in colunas:
+        chave, largura = coluna[:2]
+        minimo = coluna[2] if len(coluna) > 2 else min(largura, max(42, int(largura * 0.55)))
+        especificacoes.append((chave, largura, min(minimo, largura)))
+        tabela.heading(chave, anchor="center")
+        tabela.column(chave, anchor="center", width=largura, minwidth=min(minimo, largura), stretch=False)
+
+    container.grid_rowconfigure(0, weight=1)
+    container.grid_columnconfigure(0, weight=1)
+    tabela.grid(row=0, column=0, sticky="nsew", padx=padx, pady=pady)
+    if barra_vertical is not None:
+        barra_vertical.grid(row=0, column=1, sticky="ns", padx=(0, padx), pady=pady)
+    if barra_horizontal is not None:
+        barra_horizontal.grid(row=1, column=0, sticky="ew", padx=padx, pady=(0, pady))
+        barra_horizontal.grid_remove()
+
+    mostrar_horizontal_anterior = None
+
+    def adaptar_larguras(_evento=None):
+        nonlocal mostrar_horizontal_anterior
+        largura_container = container.winfo_width()
+        if largura_container <= 1:
+            return
+
+        largura_barra = barra_vertical.winfo_reqwidth() if barra_vertical is not None else 0
+        disponivel = max(0, largura_container - largura_barra - (2 * padx) - 4)
+        soma_base = sum(item[1] for item in especificacoes)
+        soma_minima = sum(item[2] for item in especificacoes)
+
+        if disponivel >= soma_base:
+            fator = disponivel / soma_base if soma_base else 1
+            larguras = [max(minimo, int(base * fator)) for _, base, minimo in especificacoes]
+        elif disponivel >= soma_minima:
+            inferior, superior = 0.0, 1.0
+            for _ in range(24):
+                meio = (inferior + superior) / 2
+                total = sum(max(minimo, int(base * meio)) for _, base, minimo in especificacoes)
+                if total <= disponivel:
+                    inferior = meio
+                else:
+                    superior = meio
+            larguras = [max(minimo, int(base * inferior)) for _, base, minimo in especificacoes]
+            sobra = disponivel - sum(larguras)
+            for indice, (_, base, _) in enumerate(especificacoes):
+                acrescimo = min(sobra, base - larguras[indice])
+                larguras[indice] += acrescimo
+                sobra -= acrescimo
+                if sobra <= 0:
+                    break
+        else:
+            larguras = [minimo for _, _, minimo in especificacoes]
+
+        for (chave, _, _), largura in zip(especificacoes, larguras):
+            tabela.column(chave, width=largura)
+
+        mostrar_horizontal = sum(larguras) > disponivel
+        if barra_horizontal is not None and mostrar_horizontal != mostrar_horizontal_anterior:
+            if mostrar_horizontal:
+                barra_horizontal.grid()
+            else:
+                barra_horizontal.grid_remove()
+            mostrar_horizontal_anterior = mostrar_horizontal
+    container.bind("<Configure>", adaptar_larguras, add="+")
+    container.after_idle(adaptar_larguras)
+    return adaptar_larguras
+
+
 def configure_styles():
     c = PALETA
     style = ttk.Style()

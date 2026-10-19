@@ -27,8 +27,8 @@ def selecionar_produto(root):
         [
             ("cod", "Código", 90),
             ("nome", "Produto", 270),
-            ("est", "Estoque", 80),
-            ("un", "Unidade", 60),
+            ("est", "Saldo disponível (unidade-base)", 180),
+            ("un", "Unidade-base", 100),
         ],
     )
 
@@ -72,35 +72,13 @@ def selecionar_produto(root):
 
 
 def obter_custo_medio(produto_id):
-    dados = q("""
-        SELECT
-            COALESCE((
-                SELECT SUM(qtd_estoque * COALESCE(valor_unit, 0))
-                FROM itens WHERE produto_id=?
-            ), 0) AS valor_entradas,
-            COALESCE((
-                SELECT SUM(qtd * COALESCE(valor_unit, 0))
-                FROM itens_saida WHERE produto_id=?
-            ), 0) AS valor_saidas,
-            COALESCE((
-                SELECT SUM(qtd_estoque) FROM itens WHERE produto_id=?
-            ), 0) AS qtd_entradas,
-            COALESCE((
-                SELECT SUM(qtd) FROM itens_saida WHERE produto_id=?
-            ), 0) AS qtd_saidas
-    """, (produto_id, produto_id, produto_id, produto_id))
-
+    dados = q(ESTOQUE_SQL + " WHERE p.id=?", (produto_id,))
     if not dados:
         return None, 0
-
-    r = dados[0]
-    qtd_estoque = (r["qtd_entradas"] or 0) - (r["qtd_saidas"] or 0)
-    valor_estoque = (r["valor_entradas"] or 0) - (r["valor_saidas"] or 0)
-
-    if qtd_estoque <= 0:
-        return None, max(qtd_estoque, 0)
-
-    return valor_estoque / qtd_estoque, qtd_estoque
+    quantidade = float(dados[0]["estoque"] or 0)
+    if quantidade <= 0:
+        return None, max(quantidade, 0)
+    return float(dados[0]["valor_unitario"] or 0), quantidade
 
 
 def saida_win(root, sid):
@@ -181,8 +159,8 @@ def saida_win(root, sid):
         [
             ("cod", "Código", 90),
             ("prod", "Produto", 260),
-            ("qtd", "Quantidade", 90),
-            ("vu", "Valor unitário", 110),
+            ("qtd", "Quantidade (unidade-base)", 180),
+            ("vu", "Valor unitário (unidade-base)", 190),
             ("sub", "Subtotal", 110),
         ],
     )
@@ -193,7 +171,7 @@ def saida_win(root, sid):
         tv.delete(*tv.get_children())
         total = 0
         for i in q("""
-            SELECT i.*, p.codigo, p.nome
+            SELECT i.*, p.codigo, p.nome, p.unidade
             FROM itens_saida i
             JOIN produtos p ON p.id=i.produto_id
             WHERE saida_id=?
@@ -207,7 +185,7 @@ def saida_win(root, sid):
                 values=(
                     i["codigo"],
                     i["nome"],
-                    fmt(i["qtd"]),
+                    f"{fmt(i['qtd'])} {i['unidade'] or 'unidade-base'}",
                     f"R$ {(i['valor_unit'] or 0):.2f}",
                     f"R$ {(i['subtotal'] or 0):.2f}",
                 ),
@@ -234,7 +212,7 @@ def saida_win(root, sid):
         if estoque <= 0:
             messagebox.showwarning(
                 "Estoque insuficiente",
-                "Esse produto não possui quantidade disponível no estoque.",
+                "Este produto não possui quantidade disponível no estoque.",
                 parent=w
             )
             return
@@ -256,10 +234,12 @@ def saida_win(root, sid):
         ttk.Label(pop, text=f"{prod['codigo']} - {prod['nome']}").pack(padx=12, pady=(12, 6))
         ttk.Label(
             pop,
-            text=f"Disponível: {fmt(round(estoque, 4))} {prod['unidade'] or ''}"
+            text=f"Disponível na unidade-base: {fmt(round(estoque, 4))} {prod['unidade'] or 'unidades'}"
         ).pack()
-        ttk.Label(pop, text=f"Valor unitário: R$ {custo_medio:.2f}").pack(pady=(4, 0))
-        ttk.Label(pop, text="Quantidade a retirar:").pack(pady=(8, 0))
+        ttk.Label(pop, text=f"Valor unitário (unidade-base): R$ {custo_medio:.2f}").pack(pady=(4, 0))
+        ttk.Label(pop, text="Informe a quantidade efetivamente retirada na unidade-base.").pack(pady=(8, 0))
+        ttk.Label(pop, text="Embalagens não são convertidas automaticamente.").pack(pady=(2, 0))
+        ttk.Label(pop, text=f"Quantidade a retirar ({prod['unidade'] or 'unidades-base'}):").pack(pady=(8, 0))
 
         qtd = tk.StringVar()
         entrada = ttk.Entry(pop, textvariable=qtd, width=14)
@@ -280,8 +260,8 @@ def saida_win(root, sid):
                 messagebox.showwarning(
                     "Estoque insuficiente",
                     "A quantidade informada é maior que o estoque disponível.\n\n"
-                    f"Disponível: {fmt(round(estoque_atual, 4))}\n"
-                    f"Informado: {fmt(qv)}",
+                    f"Disponível na unidade-base: {fmt(round(estoque_atual, 4))} {prod['unidade'] or 'unidades'}\n"
+                    f"Informado na unidade-base: {fmt(qv)} {prod['unidade'] or 'unidades'}",
                     parent=pop
                 )
                 return

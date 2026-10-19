@@ -3,6 +3,9 @@ from tkinter import ttk, messagebox
 
 from dados.restaurante.database import q, run
 from estoque_restaurante.utils import fmt, now, TIPOS
+from estoque_restaurante.config import CNPJ_ESTABELECIMENTO
+from ui.design_system import dinheiro
+from ui.dashboard import abrir_relatorio_saidas
 from estoque_restaurante.front import tree, buttons, form, sel, safe
 from estoque_restaurante.ui.saida_detalhes import saida_win
 
@@ -129,7 +132,7 @@ def criar_aba_saidas(notebook, root):
     root_ref = root
 
     aba = ttk.Frame(notebook)
-    notebook.add(aba, text="↗  Saídas")
+    notebook.add(aba, text="↗  Controle de Saídas")
 
     st = tree(
         aba,
@@ -148,6 +151,7 @@ def criar_aba_saidas(notebook, root):
             ("Nova saída", nova_saida),
             ("Abrir saída", editar_saida),
             ("Excluir saída", excluir_saida),
+            ("📋 Controle de Saídas", lambda: abrir_relatorio_saidas(root, q, dinheiro, fmt, "Restaurante", CNPJ_ESTABELECIMENTO)),
             ("Atualizar", sai_refresh),
         ],
     )

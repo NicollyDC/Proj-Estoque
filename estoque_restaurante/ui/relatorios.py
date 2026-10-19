@@ -12,6 +12,7 @@ from pathlib import Path
 
 from dados.restaurante.database import q
 from estoque_restaurante.utils import TIPOS
+from ui.design_system import dinheiro
 from estoque_restaurante.front import tree
 from ui import design_system as design
 
@@ -82,20 +83,6 @@ def formatar_data_br(txt):
         return txt
 
     return data.strftime("%d/%m/%Y")
-
-
-def dinheiro(valor):
-    valor = valor or 0
-
-    texto = f"{valor:,.2f}"
-
-    return (
-        "R$ "
-        + texto
-        .replace(",", "X")
-        .replace(".", ",")
-        .replace("X", ".")
-    )
 
 
 def numero_br(valor):
@@ -385,6 +372,7 @@ def buscar_detalhes(
             SELECT
                 date(s.data_hora) AS data,
                 p.nome AS produto,
+                p.unidade AS unidade_base,
                 s.tipo AS tipo,
                 isd.qtd AS quantidade,
                 COALESCE(
@@ -410,6 +398,7 @@ def buscar_detalhes(
             SELECT
                 date(s.data_hora) AS data,
                 p.nome AS produto,
+                p.unidade AS unidade_base,
                 s.tipo AS tipo,
                 isd.qtd AS quantidade,
                 COALESCE(
@@ -430,6 +419,17 @@ def buscar_detalhes(
             fim_txt,
             tipo_filtro,
         ))
+
+    ajustes = q("""
+        SELECT date(a.data_hora) AS data, p.nome AS produto,
+               a.diferenca AS quantidade,
+               a.diferenca * a.valor_unit AS valor,
+               a.motivo, a.responsavel, a.observacao
+        FROM ajustes_estoque a
+        JOIN produtos p ON p.id = a.produto_id
+        WHERE date(a.data_hora) BETWEEN date(?) AND date(?)
+        ORDER BY a.data_hora DESC, p.nome
+    """, (inicio_txt, fim_txt)) if tipo_filtro is None else []
 
     detalhes = []
 
@@ -457,6 +457,20 @@ def buscar_detalhes(
             ),
             "origem": "-",
             "tipo": r["tipo"],
+            "quantidade": r["quantidade"] or 0,
+            "unidade_base": r["unidade_base"] or "unidades-base",
+            "valor": r["valor"] or 0,
+        })
+
+    for r in ajustes:
+        origem = f"{r['motivo']} · {r['responsavel']}"
+        if r["observacao"]:
+            origem += f" · {r['observacao']}"
+        detalhes.append({
+            "data": r["data"],
+            "produto": r["produto"] or "Produto não identificado",
+            "origem": origem,
+            "tipo": "Ajuste de estoque",
             "quantidade": r["quantidade"] or 0,
             "valor": r["valor"] or 0,
         })
@@ -884,7 +898,7 @@ def montar_texto_relatorio():
                 f"{'PERÍODO':<14}"
                 f"{'TIPO':<20}"
                 f"{'PRODUTO':<35}"
-                f"{'QUANTIDADE':>12}"
+                    f"{'QTD. / UNIDADE-BASE':>20}"
                 f"{'VALOR':>15}"
             )
 
@@ -898,7 +912,7 @@ def montar_texto_relatorio():
                     f"{periodo_txt:<14}"
                     f"{item['tipo']:<20}"
                     f"{item['produto'][:33]:<35}"
-                    f"{numero_br(item['quantidade']):>12}"
+                    f"{(numero_br(item['quantidade']) + ' ' + item.get('unidade_base', '')).strip():>20}"
                     f"{dinheiro(item['valor']):>15}"
                 )
 
@@ -1389,7 +1403,7 @@ tr.positivo {{
     <th>Tipo</th>
     <th>Produto</th>
     <th>Origem / Fornecedor</th>
-    <th>Quantidade</th>
+    <th>Quantidade (unidade-base nas saídas)</th>
     <th>Valor</th>
 
 </tr>
@@ -1422,7 +1436,7 @@ tr.positivo {{
 
     <td class="numero">
         {html.escape(
-            numero_br(item['quantidade'])
+            (numero_br(item['quantidade']) + ' ' + item.get('unidade_base', '')).strip()
         )}
     </td>
 
@@ -1522,7 +1536,7 @@ def imprimir_relatorio(
             (
                 "Não foi possível abrir o relatório "
                 "para impressão.\n\n"
-                f"{ex}"
+                "Tente novamente. Se o problema continuar, contate o suporte."
             ),
             parent=root_ref
         )

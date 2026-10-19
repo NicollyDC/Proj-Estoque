@@ -11,6 +11,8 @@ from pathlib import Path
 
 from dados.hotel.database import q
 from estoque_hotel.utils import TIPOS
+from ui.design_system import dinheiro
+from ui.dashboard import ESTILO_RELATORIO_HTML
 from estoque_hotel.front import (tree ,BRANCO,TEXTO,BORDA)
 from ui import design_system as design
 
@@ -76,19 +78,6 @@ def formatar_data_br(txt):
         return txt
 
     return data.strftime("%d/%m/%Y")
-
-
-def dinheiro(valor):
-    valor = valor or 0
-    texto = f"{valor:,.2f}"
-
-    return (
-        "R$ "
-        + texto
-        .replace(",", "X")
-        .replace(".", ",")
-        .replace("X", ".")
-    )
 
 
 def numero_br(valor):
@@ -293,6 +282,7 @@ def buscar_detalhes(inicio, fim, tipo_filtro):
             SELECT
                 date(s.data_hora) AS data,
                 p.nome AS produto,
+                p.unidade AS unidade_base,
                 s.tipo AS tipo,
                 isd.qtd AS quantidade,
                 COALESCE(
@@ -316,6 +306,7 @@ def buscar_detalhes(inicio, fim, tipo_filtro):
             SELECT
                 date(s.data_hora) AS data,
                 p.nome AS produto,
+                p.unidade AS unidade_base,
                 s.tipo AS tipo,
                 isd.qtd AS quantidade,
                 COALESCE(
@@ -337,6 +328,17 @@ def buscar_detalhes(inicio, fim, tipo_filtro):
             tipo_filtro,
         ))
 
+    ajustes = q("""
+        SELECT date(a.data_hora) AS data, p.nome AS produto,
+               a.diferenca AS quantidade,
+               a.diferenca * a.valor_unit AS valor,
+               a.motivo, a.responsavel, a.observacao
+        FROM ajustes_estoque a
+        JOIN produtos p ON p.id = a.produto_id
+        WHERE date(a.data_hora) BETWEEN date(?) AND date(?)
+        ORDER BY a.data_hora DESC, p.nome
+    """, (inicio_txt, fim_txt)) if tipo_filtro is None else []
+
     detalhes = []
 
     for r in compras:
@@ -355,6 +357,20 @@ def buscar_detalhes(inicio, fim, tipo_filtro):
             "produto": r["produto"] or "Produto não identificado",
             "origem": "-",
             "tipo": r["tipo"],
+            "quantidade": r["quantidade"] or 0,
+            "unidade_base": r["unidade_base"] or "unidades-base",
+            "valor": r["valor"] or 0,
+        })
+
+    for r in ajustes:
+        origem = f"{r['motivo']} · {r['responsavel']}"
+        if r["observacao"]:
+            origem += f" · {r['observacao']}"
+        detalhes.append({
+            "data": r["data"],
+            "produto": r["produto"] or "Produto não identificado",
+            "origem": origem,
+            "tipo": "Ajuste de estoque",
             "quantidade": r["quantidade"] or 0,
             "valor": r["valor"] or 0,
         })
@@ -670,7 +686,7 @@ def montar_texto_relatorio():
                 "",
                 "DETALHAMENTO POR PRODUTO",
                 "=" * 100,
-                f"{'PERÍODO':<14}{'TIPO':<20}{'PRODUTO':<35}{'QUANTIDADE':>12}{'VALOR':>15}",
+                f"{'PERÍODO':<14}{'TIPO':<20}{'PRODUTO':<35}{'QTD. / UNIDADE-BASE':>20}{'VALOR':>15}",
                 "-" * 100,
             ])
 
@@ -679,7 +695,7 @@ def montar_texto_relatorio():
                     f"{periodo_txt:<14}"
                     f"{item['tipo']:<20}"
                     f"{item['produto'][:33]:<35}"
-                    f"{numero_br(item['quantidade']):>12}"
+                    f"{(numero_br(item['quantidade']) + ' ' + item.get('unidade_base', '')).strip():>20}"
                     f"{dinheiro(item['valor']):>15}"
                 )
 
@@ -747,180 +763,7 @@ def gerar_html_relatorio(periodos, tipo_filtro, detalhes):
 <meta charset="UTF-8">
 <title>Relatório de Movimentação de Estoque - Hotel</title>
 
-<style>
-@page {{
-    size: A4 landscape;
-    margin: 12mm;
-}}
-
-* {{
-    box-sizing: border-box;
-}}
-
-body {{
-    margin: 0;
-    padding: 0;
-    font-family: Arial, Helvetica, sans-serif;
-    color: #1f2937;
-    font-size: 11px;
-    background: white;
-}}
-
-.cabecalho {{
-    border-bottom: 2px solid #1f4e79;
-    padding-bottom: 12px;
-    margin-bottom: 16px;
-}}
-
-.titulo {{
-    font-size: 22px;
-    font-weight: bold;
-    color: #17365d;
-    margin-bottom: 4px;
-}}
-
-.subtitulo {{
-    font-size: 13px;
-    color: #6b7280;
-}}
-
-.informacoes, .resumo {{
-    display: table;
-    width: 100%;
-    margin-bottom: 18px;
-}}
-
-.info-card {{
-    display: table-cell;
-    width: 25%;
-    padding: 8px 12px;
-    border: 1px solid #d1d5db;
-    background: #f8fafc;
-}}
-
-.info-label {{
-    display: block;
-    font-size: 9px;
-    color: #6b7280;
-    text-transform: uppercase;
-    margin-bottom: 4px;
-}}
-
-.info-valor {{
-    font-size: 12px;
-    font-weight: bold;
-}}
-
-.resumo-card {{
-    display: table-cell;
-    width: 33.33%;
-    padding: 10px 14px;
-    border: 1px solid #d1d5db;
-}}
-
-.resumo-card + .resumo-card {{
-    border-left: none;
-}}
-
-.resumo-titulo {{
-    font-size: 9px;
-    color: #6b7280;
-    text-transform: uppercase;
-}}
-
-.resumo-valor {{
-    margin-top: 5px;
-    font-size: 16px;
-    font-weight: bold;
-}}
-
-.secao {{
-    font-size: 14px;
-    font-weight: bold;
-    color: #17365d;
-    margin: 18px 0 8px;
-}}
-
-table {{
-    width: 100%;
-    border-collapse: collapse;
-    page-break-inside: auto;
-}}
-
-thead {{
-    display: table-header-group;
-}}
-
-tr {{
-    page-break-inside: avoid;
-    page-break-after: auto;
-}}
-
-th {{
-    background: #17365d;
-    color: white;
-    padding: 8px;
-    text-align: left;
-    font-size: 10px;
-}}
-
-td {{
-    border-bottom: 1px solid #d9dee5;
-    padding: 7px 8px;
-    vertical-align: middle;
-}}
-
-td.numero {{
-    text-align: right;
-}}
-
-tr:nth-child(even) {{
-    background: #f8fafc;
-}}
-
-tr.sem-movimentacao {{
-    color: #6b7280;
-}}
-
-tr.alerta {{
-    background: #fff4f4;
-}}
-
-tr.positivo {{
-    background: #f5faf6;
-}}
-
-.total {{
-    background: #e8eef5 !important;
-    font-weight: bold;
-    border-top: 2px solid #17365d;
-}}
-
-.total td {{
-    padding: 9px 8px;
-}}
-
-.rodape {{
-    margin-top: 20px;
-    padding-top: 8px;
-    border-top: 1px solid #d1d5db;
-    font-size: 9px;
-    color: #6b7280;
-}}
-
-.detalhes {{
-    page-break-before: always;
-}}
-
-@media screen {{
-    body {{
-        max-width: 1100px;
-        margin: 30px auto;
-        padding: 30px;
-        box-shadow: 0 0 15px rgba(0,0,0,.12);
-    }}
-}}
-</style>
+<style>{ESTILO_RELATORIO_HTML}</style>
 </head>
 
 <body>
@@ -1001,7 +844,7 @@ tr.positivo {{
     <th>Tipo</th>
     <th>Produto</th>
     <th>Origem / Fornecedor</th>
-    <th>Quantidade</th>
+    <th>Quantidade (unidade-base nas saídas)</th>
     <th>Valor</th>
 </tr>
 </thead>
@@ -1015,7 +858,7 @@ tr.positivo {{
     <td>{html.escape(item['tipo'])}</td>
     <td>{html.escape(item['produto'])}</td>
     <td>{html.escape(item['origem'])}</td>
-    <td class="numero">{html.escape(numero_br(item['quantidade']))}</td>
+    <td class="numero">{html.escape((numero_br(item['quantidade']) + ' ' + item.get('unidade_base', '')).strip())}</td>
     <td class="numero">{dinheiro(item['valor'])}</td>
 </tr>
 """
@@ -1084,7 +927,7 @@ def imprimir_relatorio(periodos, tipo_filtro, detalhes):
             (
                 "Não foi possível abrir o relatório "
                 "para impressão.\n\n"
-                f"{ex}"
+                "Tente novamente. Se o problema continuar, contate o suporte."
             ),
             parent=root_ref
         )

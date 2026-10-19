@@ -582,7 +582,7 @@ class TelaPrimeiroAdmin:
 
             messagebox.showwarning(
                 "Usuário inválido",
-                "O usuário deve possuir entre 3 e 30 caracteres e pode conter apenas letras, números, ponto (.) ou sublinhado (_).",
+                "Use de 3 a 30 caracteres: letras, números, ponto (.) ou sublinhado (_).",
                 parent=self.janela
             )
 
@@ -604,7 +604,7 @@ class TelaPrimeiroAdmin:
 
             messagebox.showwarning(
                 "Senha",
-                "A senha deve possuir pelo menos 6 caracteres.",
+                "A senha deve ter pelo menos 6 caracteres.",
                 parent=self.janela
             )
 
@@ -624,7 +624,7 @@ class TelaPrimeiroAdmin:
 
                 messagebox.showerror(
                     "Usuário existente",
-                    "Esse usuário já existe.",
+                    "Este usuário já existe.",
                     parent=self.janela
                 )
 
@@ -632,7 +632,8 @@ class TelaPrimeiroAdmin:
 
                 messagebox.showerror(
                     "Erro",
-                    f"Não foi possível criar o administrador.\n\n{erro}",
+                    "Não foi possível criar o administrador. Tente novamente. "
+                    "Se o problema continuar, contate o suporte.",
                     parent=self.janela
                 )
 

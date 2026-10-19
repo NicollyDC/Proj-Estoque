@@ -405,7 +405,7 @@ def separador(parent):
 # FORMULÁRIO
 # ============================================================
 
-def form(parent, title, fields, values=None):
+def form(parent, title, fields, values=None, extra_content=None):
     """
     Abre um formulário modal e retorna um dict com os valores,
     ou None se a janela for fechada sem salvar.
@@ -519,6 +519,9 @@ def form(parent, title, fields, values=None):
 
         variaveis[key] = var
 
+    if extra_content is not None:
+        extra_content(area, len(fields))
+
     # ---------------- rodapé ----------------
 
     rodape = tk.Frame(
@@ -588,11 +591,8 @@ def tree(parent, cols):
         style="App.Treeview"
     )
 
-    for key, title, width in cols:
-
+    for key, title, _width in cols:
         tabela.heading(key, text=title)
-        numeric = key.lower() in {"est", "min", "qtd", "quantidade", "valor", "total", "subtotal", "vu", "itens"}
-        tabela.column(key, width=width, minwidth=50, anchor="e" if numeric else "w")
 
     barra = ttk.Scrollbar(
         frame,
@@ -601,10 +601,15 @@ def tree(parent, cols):
         style="App.Vertical.TScrollbar"
     )
 
-    tabela.configure(yscrollcommand=barra.set)
-
-    tabela.pack(side="left", fill="both", expand=True)
-    barra.pack(side="right", fill="y")
+    barra_horizontal = ttk.Scrollbar(frame, orient="horizontal", command=tabela.xview)
+    tabela.configure(yscrollcommand=barra.set, xscrollcommand=barra_horizontal.set)
+    design.configurar_treeview_responsivo(
+        tabela,
+        frame,
+        [(key, width) for key, _title, width in cols],
+        barra,
+        barra_horizontal,
+    )
 
     return tabela
 

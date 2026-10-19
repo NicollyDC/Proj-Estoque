@@ -1,39 +1,11 @@
 from datetime import datetime
 
 from dados.hotel.database import q
-
+from dados.estoque import ESTOQUE_SQL
 
 FIN = ["venda", "uso e consumo"]
 
 TIPOS = ["perda", "uso e consumo", "venda"]
-
-
-ESTOQUE_SQL = """
-SELECT p.*,
-
-COALESCE(
-    (
-        SELECT SUM(qtd_estoque)
-        FROM itens
-        WHERE produto_id = p.id
-    ),
-    0
-)
-
--
-
-COALESCE(
-    (
-        SELECT SUM(isd.qtd)
-        FROM itens_saida isd
-        JOIN saidas s ON s.id = isd.saida_id
-        WHERE isd.produto_id = p.id
-    ),
-    0
-) AS estoque
-
-FROM produtos p
-"""
 
 
 def now():

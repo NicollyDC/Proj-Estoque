@@ -3,6 +3,13 @@ from tkinter import ttk, messagebox
 from ui import design_system as design
 
 from estoque_restaurante.app_state import salvar
+from estoque_restaurante.utils import ESTOQUE_SQL, fmt
+from ui.design_system import dinheiro
+from dados.restaurante.database import q, sync_tracker
+from ui.dashboard import criar_aba_dashboard
+from ui.sidebar import criar_sidebar
+from ui.usuarios import JanelaUsuarios
+from sessao import sessao
 
 from estoque_restaurante.ui.notas import criar_aba_notas
 from estoque_restaurante.ui.produtos import criar_aba_produtos
@@ -11,9 +18,6 @@ from estoque_restaurante.ui.relatorios import criar_aba_relatorios
 
 from estoque_restaurante.front import (
     FUNDO,
-    BRANCO,
-    BORDA,
-    criar_botao_arredondado,
 )
 # ============================================================
 # JANELA DO RESTAURANTE
@@ -64,82 +68,8 @@ def criar_janela_restaurante(painel, ao_fechar=None):
         if ao_fechar:
             ao_fechar()
 
-    # ========================================================
-    # CABEÇALHO
-    # ========================================================
-
-    cabecalho = tk.Frame(
-        root,
-        bg=FUNDO
-    )
-
-    cabecalho.pack(
-        fill="x",
-        padx=28,
-        pady=(24, 12)
-    )
-
-    esquerda = tk.Frame(
-        cabecalho,
-        bg=FUNDO
-    )
-
-    esquerda.pack(
-        side="left",
-        fill="x",
-        expand=True
-    )
-
-    ttk.Label(
-        esquerda,
-        text="▦  Estoque Restaurante",
-        style="AppTitle.TLabel"
-    ).pack(
-        anchor="w"
-    )
-
-    ttk.Label(
-        esquerda,
-        text="Restaurante",
-        style="AppSubtitle.TLabel"
-    ).pack(
-        anchor="w",
-        pady=(2, 0)
-    )
-
-    # ========================================================
-    # BOTÃO VOLTAR
-    # ========================================================
-
-    direita = tk.Frame(
-        cabecalho,
-        bg=FUNDO
-    )
-
-    direita.pack(
-        side="right"
-    )
-
-    criar_botao_arredondado(
-        direita,
-        "↩  Voltar ao painel",
-        voltar_painel,
-        largura=170,
-        altura=40
-    ).pack(side="right")
-
-    # ========================================================
-    # ÁREA PRINCIPAL
-    # ========================================================
-
     area = tk.Frame(root, bg=FUNDO)
-
-    area.pack(
-        fill="both",
-        expand=True,
-        padx=28,
-        pady=(4, 18)
-    )
+    area.pack(fill="both", expand=True)
 
     # ========================================================
     # NOTEBOOK
@@ -150,16 +80,20 @@ def criar_janela_restaurante(painel, ao_fechar=None):
         style="Restaurante.TNotebook"
     )
 
-    notebook.pack(
-        fill="both",
-        expand=True,
-        padx=0,
-        pady=0
+    criar_sidebar(
+        area, notebook, "Restaurante", sessao.nome, sessao.perfil, voltar_painel,
+        (lambda: JanelaUsuarios(root)) if sessao.tem_permissao("usuarios.visualizar") else None,
+        "Restaurante.TNotebook",
+        sync_tracker,
     )
+
+    notebook.pack(side="left", fill="both", expand=True, padx=18, pady=16)
 
     # ========================================================
     # ABAS
     # ========================================================
+
+    criar_aba_dashboard(notebook, q, ESTOQUE_SQL, dinheiro, fmt)
 
     criar_aba_notas(
         notebook,

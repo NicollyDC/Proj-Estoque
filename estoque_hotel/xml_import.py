@@ -131,9 +131,10 @@ def ler_xml_nfe_bytes(xml_bytes):
             xml_bytes
         )
 
-    except ET.ParseError as e:
+    except ET.ParseError:
         raise RuntimeError(
-            f"Não foi possível interpretar o XML da NF-e: {e}"
+            "Não foi possível interpretar o arquivo XML da NF-e. "
+            "Confira se o arquivo é válido e tente novamente."
         )
 
     return _processar_xml(raiz)
